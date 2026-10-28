@@ -5,7 +5,6 @@ import static io.ngaigame.caasiremos.utils.Util.startCountdown;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -124,8 +123,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         leaderboardWrapper.add(GameText.title(assetStore, "LEADERBOARD")).padBottom(20).row();
         leaderboardWrapper.add(leaderboardScroll).width(screenWidth * 0.4f).top();
 
-        Preferences prefs = Gdx.app.getPreferences(GamePoint.GAME_PREFS);
-        String selectedChip = prefs.getString("selected_chip", "rockie");
+        String selectedChip = ChipBadge.selectedKey();
         Table centerTable = new Table();
         centerTable.add(new ChipBadge(assetStore, selectedChip, 330)).row();
         balanceLabel = new Label(GamePoint.POINTS + new GamePoint().getPoints(), skin);

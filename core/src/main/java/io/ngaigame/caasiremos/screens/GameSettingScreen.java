@@ -53,7 +53,7 @@ public class GameSettingScreen implements Screen, BackHandler {
     private final Stage stage;
     private final ExtendViewport extendViewport;
 
-    private final Image rockieChipImage, streetChipImage, casinoChipImage, stakesChipImage, bossChipImage;
+    private final Image streetChipImage, casinoChipImage, stakesChipImage, bossChipImage, legendChipImage;
     private final Map<String, ChipBadge> chipBadges = new LinkedHashMap<>();
     private final Image backgroundImage;
     private String pendingRequestId; // store request ID when message arrives
@@ -80,14 +80,14 @@ public class GameSettingScreen implements Screen, BackHandler {
 
         // Create images
         // Coin art plus the chip's name in the game fonts; the coins are what you tap
-        for (String key : new String[]{"rockie", "street", "casino", "stakes", "boss"}) {
+        for (String key : ChipBadge.KEYS) {
             chipBadges.put(key, new ChipBadge(assetStore, key, 240));
         }
-        rockieChipImage = chipBadges.get("rockie").coin;
         streetChipImage = chipBadges.get("street").coin;
         casinoChipImage = chipBadges.get("casino").coin;
         stakesChipImage = chipBadges.get("stakes").coin;
         bossChipImage = chipBadges.get("boss").coin;
+        legendChipImage = chipBadges.get("legend").coin;
         backgroundImage = assetStore.blueBackground();
 
         // Set background full screen
@@ -204,11 +204,11 @@ public class GameSettingScreen implements Screen, BackHandler {
     }
 
     private void handleChipClicks() {
-        setupChipClick(rockieChipImage, "rockie");
         setupChipClick(streetChipImage, "street");
         setupChipClick(casinoChipImage, "casino");
         setupChipClick(stakesChipImage, "stakes");
         setupChipClick(bossChipImage, "boss");
+        setupChipClick(legendChipImage, "legend");
     }
 
     private void setupChipClick(Image chipImage, String chipName) {
@@ -231,13 +231,7 @@ public class GameSettingScreen implements Screen, BackHandler {
                 highlightSelectedChip();
 
                 // Set bet amount based on selected chip
-                switch (chipName) {
-                    case "rockie" -> setBetAmount(50);
-                    case "street" -> setBetAmount(100);
-                    case "casino" -> setBetAmount(250);
-                    case "stakes" -> setBetAmount(500);
-                    case "boss" -> setBetAmount(1000);
-                }
+                setBetAmount(ChipBadge.amountOf(chipName));
 
                 // Navigate to OnlinePlayersScreen
                 ((MainBlackJack) game).pushScreen(new OnlinePlayersScreen(
@@ -248,15 +242,14 @@ public class GameSettingScreen implements Screen, BackHandler {
     }
 
     private void highlightSelectedChip() {
-        Preferences prefs = Gdx.app.getPreferences(GamePoint.GAME_PREFS);
-        String selectedChip = prefs.getString("selected_chip", "rockie");
+        String selectedChip = ChipBadge.selectedKey();
 
         for (Map.Entry<String, ChipBadge> badge : chipBadges.entrySet()) {
             badge.getValue().setSelected(badge.getKey().equals(selectedChip));
         }
 
         // Reset all chips
-        Image[] allChips = {rockieChipImage, streetChipImage, casinoChipImage, stakesChipImage, bossChipImage};
+        Image[] allChips = {streetChipImage, casinoChipImage, stakesChipImage, bossChipImage, legendChipImage};
         for (Image chip : allChips) {
             chip.clearActions();
             chip.setColor(Color.WHITE); // Reset tint
@@ -265,12 +258,11 @@ public class GameSettingScreen implements Screen, BackHandler {
 
         // Highlight the selected one
         Image selectedImage = switch (selectedChip) {
-            case "rockie" -> rockieChipImage;
-            case "street" -> streetChipImage;
             case "casino" -> casinoChipImage;
             case "stakes" -> stakesChipImage;
             case "boss" -> bossChipImage;
-            default -> rockieChipImage;
+            case "legend" -> legendChipImage;
+            default -> streetChipImage;
         };
 
         selectedImage.setColor(Color.GOLD);

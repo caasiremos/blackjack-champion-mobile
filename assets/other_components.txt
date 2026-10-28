@@ -395,7 +395,7 @@ online_gamers
   orig: 260, 52
   offset: 0, 0
   index: -1
-rockie_chip
+legend_chip
   rotate: false
   xy: 314, 1106
   size: 314, 305
