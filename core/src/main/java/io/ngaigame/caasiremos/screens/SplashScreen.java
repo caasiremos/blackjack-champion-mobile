@@ -26,7 +26,12 @@ import io.ngaigame.caasiremos.utils.GameText;
 import io.ngaigame.caasiremos.utils.PlayerApi;
 import io.ngaigame.caasiremos.utils.CommonUtilInterface;
 
-public class GameModeScreen implements Screen {
+/**
+ * Shown at launch: the title art for a moment, then straight into the multiplayer lobby.
+ */
+public class SplashScreen implements Screen {
+    private static final float SPLASH_SECONDS = 2.5f;
+
     Game game;
     ExtendViewport extendViewport;
 
@@ -35,16 +40,19 @@ public class GameModeScreen implements Screen {
     WebSocketHandler webSocketHandler;
     CommonUtilInterface commonUtilInterface;
     Stage stage;
-    TextureRegion cardChipGroupTR, classicButtonTR, twoPlayerTR, backgroundTR;
-    Image backgroundImage, cardChipGroupImage, classicButtonImage, twoPlayerImage;
+    TextureRegion cardChipGroupTR, backgroundTR;
+    Image backgroundImage, cardChipGroupImage;
     Label titleLabel;
-
 
     Table mainTable;
 
-    public GameModeScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
-                          AdHandler adHandler, WebSocketHandler webSocketHandler,
-                          CommonUtilInterface commonUtilInterface) {
+    private float elapsed = 0f;
+    private boolean signInRequested = false;
+    private boolean leaving = false;
+
+    public SplashScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
+                        AdHandler adHandler, WebSocketHandler webSocketHandler,
+                        CommonUtilInterface commonUtilInterface) {
         stage = new Stage(extendViewport);
         this.game = game;
         this.assetStore = assetStore;
@@ -55,8 +63,6 @@ public class GameModeScreen implements Screen {
 
         // Load textures
         cardChipGroupTR = assetStore.otherComponents.findRegion("card_chip_group");
-        classicButtonTR = assetStore.otherComponents.findRegion("button_classic");
-        twoPlayerTR = assetStore.otherComponents.findRegion("button_two_player");
         backgroundTR = assetStore.backgroundComponents.findRegion("background");
 
         // Create images
@@ -64,76 +70,61 @@ public class GameModeScreen implements Screen {
         backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
         backgroundImage.setPosition(0, 0);
 
-        titleLabel = GameText.label(assetStore.heroFont, "BLACKJACK");
-        classicButtonImage = new Image(classicButtonTR);
-        twoPlayerImage = new Image(twoPlayerTR);
+        titleLabel = GameText.label(assetStore.heroFont, "BLACKJACK CHAMPION");
         cardChipGroupImage = new Image(cardChipGroupTR);
-
-        classicButtonImage.setSize(1000, 500);
 
         // Create and setup main table
         mainTable = new Table();
         mainTable.setFillParent(true);
-        mainTable.top(); // Align content to top
+        mainTable.center();
 
-        // Create a table for the side-by-side buttons
-        Table buttonsTable = new Table();
-        buttonsTable.add(classicButtonImage).width(380).height(130).padRight(40f).padBottom(30f);
-        buttonsTable.add(twoPlayerImage).width(380).height(130).padBottom(30f);
-
-        // Build the main layout
-        // The artwork takes whatever height is left, so the title and buttons always fit on screen
+        // The artwork takes whatever height is left, so the title always fits on screen
         cardChipGroupImage.setScaling(Scaling.fit);
         mainTable.add(cardChipGroupImage).padTop(40f).width(800).maxHeight(700).expandY().fillY().row();
-        mainTable.add(titleLabel).padTop(10f).row();
-        mainTable.add(buttonsTable).padTop(30f).padBottom(20f);
+        mainTable.add(titleLabel).padTop(10f).padBottom(80f);
+
+        // Fade the title art in
+        mainTable.getColor().a = 0f;
+        mainTable.addAction(Actions.fadeIn(0.6f));
 
         // Add all actors to stage
         stage.addActor(backgroundImage);
         stage.addActor(mainTable);
 
-        twoPlayerImage.addListener(new ClickListener() {
+        // If sign-in was dismissed, a tap on the splash brings the account picker back
+        backgroundImage.addListener(new ClickListener() {
             @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                twoPlayerImage.addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
-            }
-
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                twoPlayerImage.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-
-                // Online play needs a server account; start signing in rather than opening a dead lobby
-                GoogleSignInInterface auth = ((MainBlackJack) game).getAuthInterface();
-                if (auth != null && !auth.isSignedIn()) {
-                    commonUtilInterface.showToast("Sign in with Google to play online");
-                    auth.signIn();
-                    return;
-                }
-
-                ((MainBlackJack) game).pushScreen(new GameSettingScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
+            public void clicked(InputEvent event, float x, float y) {
+                if (signInRequested) requestSignIn();
             }
         });
+    }
 
-        classicButtonImage.addListener(new ClickListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                classicButtonImage.addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
-            }
+    /**
+     * Online play needs a server account, so the lobby only opens once the player is signed in.
+     */
+    private void continueToLobby() {
+        GoogleSignInInterface auth = ((MainBlackJack) game).getAuthInterface();
+        if (auth != null && !auth.isSignedIn()) {
+            if (!signInRequested) requestSignIn();
+            return;
+        }
 
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                classicButtonImage.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-                ((MainBlackJack) game).pushScreen(new ClassicGamePlayScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
-            }
-        });
+        leaving = true;
+        // Replace rather than push: back from the lobby exits instead of returning to the splash
+        ((MainBlackJack) game).replaceScreen(new GameSettingScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
+    }
+
+    private void requestSignIn() {
+        signInRequested = true;
+        commonUtilInterface.showToast("Sign in with Google to play online");
+        ((MainBlackJack) game).getAuthInterface().signIn();
     }
 
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
-        
+
         // Check for internet connection
         if (!commonUtilInterface.isNetworkAvailable()) {
             commonUtilInterface.showToast("You are offline");
@@ -148,6 +139,12 @@ public class GameModeScreen implements Screen {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         stage.act(delta);
         stage.draw();
+
+        // Sign-in finishes in the background, so keep checking until we can move on
+        elapsed += delta;
+        if (!leaving && elapsed >= SPLASH_SECONDS) {
+            continueToLobby();
+        }
     }
 
     @Override

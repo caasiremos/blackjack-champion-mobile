@@ -11,7 +11,7 @@ import java.util.Stack;
 
 import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.auth.GoogleSignInInterface;
-import io.ngaigame.caasiremos.screens.GameModeScreen;
+import io.ngaigame.caasiremos.screens.SplashScreen;
 import io.ngaigame.caasiremos.sockets.WebSocketHandler;
 import io.ngaigame.caasiremos.utils.CommonGameFunctions;
 import io.ngaigame.caasiremos.utils.CommonUtilInterface;
@@ -52,7 +52,7 @@ public class MainBlackJack extends Game {
         extendViewport = new ExtendViewport(1920, 1080, orthographicCamera);
         assetStore = new AssetStore();
         assetStore.loadAssets();
-        setScreen(new GameModeScreen(this, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
+        setScreen(new SplashScreen(this, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
     }
 
     public void pushScreen(Screen screen) {
