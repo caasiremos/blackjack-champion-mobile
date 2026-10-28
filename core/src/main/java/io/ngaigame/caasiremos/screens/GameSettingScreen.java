@@ -39,6 +39,9 @@ import io.ngaigame.caasiremos.utils.CommonUtilInterface;
 import io.ngaigame.caasiremos.utils.OverlayContainer;
 import io.ngaigame.caasiremos.utils.UiKit;
 import io.ngaigame.caasiremos.utils.WalletDialog;
+import io.ngaigame.caasiremos.utils.WalletHistoryDialog;
+import io.ngaigame.caasiremos.wallet.WalletClient;
+import io.ngaigame.caasiremos.wallet.WalletTransaction;
 import io.ngaigame.caasiremos.utils.Util;
 
 public class GameSettingScreen implements Screen, BackHandler {
@@ -58,6 +61,8 @@ public class GameSettingScreen implements Screen, BackHandler {
     public Label timeCountLabel, opponentNameLabel;
     Label.LabelStyle  timeCountLabelStyle, opponentLabelStyle;
     boolean overlayShowing = false;
+    private TextButton walletButton;
+    private final WalletClient.Listener walletListener;
 
     public GameSettingScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
                              AdHandler adHandler, WebSocketHandler webSocketHandler,
@@ -99,12 +104,9 @@ public class GameSettingScreen implements Screen, BackHandler {
         // Button layout
         Table buttonTable = new Table();
         TextButton depositButton = UiKit.button(assetStore, "DEPOSIT", UiKit.Style.PRIMARY,
-            () -> WalletDialog.show(stage, assetStore, "DEPOSIT", "Add money from your mobile money number.",
-                // Not connected to the server yet
-                (phone, amount) -> commonUtilInterface.showToast("Deposits are coming soon")));
+            () -> WalletDialog.show(stage, assetStore, true));
         TextButton withdrawButton = UiKit.button(assetStore, "WITHDRAW", UiKit.Style.SECONDARY,
-            () -> WalletDialog.show(stage, assetStore, "WITHDRAW", "Send money to your mobile money number.",
-                (phone, amount) -> commonUtilInterface.showToast("Withdrawals are coming soon")));
+            () -> WalletDialog.show(stage, assetStore, false));
         buttonTable.add(depositButton).expandX().left().padLeft(30).width(450).height(150);
         buttonTable.add().expandX(); // Spacer
         buttonTable.add(withdrawButton).expandX().right().padRight(30).width(450).height(150);
@@ -128,6 +130,39 @@ public class GameSettingScreen implements Screen, BackHandler {
         highlightSelectedChip();
         getOnlinePlayers();
         Util.addBackButton(stage, assetStore, (MainBlackJack) game);
+
+        // Cash wallet (real money, not chips): balance top-right, opens the wallet and history
+        WalletClient wallet = WalletClient.get();
+        wallet.attach(webSocketHandler);
+        walletButton = UiKit.button(assetStore, walletText(), UiKit.Style.SMALL, () -> WalletHistoryDialog.show(stage, assetStore));
+        walletButton.pack();
+        walletButton.setPosition(stage.getWidth() - walletButton.getWidth() - 40, stage.getHeight() - walletButton.getHeight() - 30);
+        stage.addActor(walletButton);
+
+        walletListener = new WalletClient.Listener() {
+            @Override
+            public void onWalletChanged() {
+                walletButton.setText(walletText());
+                walletButton.pack();
+                walletButton.setX(stage.getWidth() - walletButton.getWidth() - 40);
+            }
+
+            @Override
+            public void onTransactionUpdated(WalletTransaction transaction) {
+                // Finished while the player wasn't watching it
+                if (transaction.isFinished() && !WalletDialog.isShowing(transaction.reference)) {
+                    String kind = transaction.isDeposit() ? "Deposit" : "Withdrawal";
+                    commonUtilInterface.showToast(kind + " of " + WalletClient.get().money(transaction.amount) + " "
+                        + transaction.statusText().toLowerCase());
+                }
+            }
+        };
+        wallet.addListener(walletListener);
+    }
+
+    private String walletText() {
+        WalletClient wallet = WalletClient.get();
+        return "WALLET  " + (wallet.isLoaded() ? wallet.money(wallet.getBalance()) : "UGX --");
     }
 
     private void listenToServer() {
@@ -140,6 +175,8 @@ public class GameSettingScreen implements Screen, BackHandler {
                     try {
                         JsonObject jsonObject = JsonParser.parseString(message).getAsJsonObject();
                         String action = jsonObject.has("action") ? jsonObject.get("action").getAsString() : "";
+                        // Wallet messages (including wallet errors) are handled and shown by the wallet UI
+                        if (WalletClient.get().handle(jsonObject)) return;
                         PlayerApi.applyPlayerUpdate(jsonObject);
 
                         if ("game_request".equals(action)) {
@@ -248,6 +285,8 @@ public class GameSettingScreen implements Screen, BackHandler {
         Gdx.input.setInputProcessor(stage);
         // Also re-claims the socket when coming back from the lobby or a game
         listenToServer();
+        // Pushes sent while another screen had the socket were missed, so ask for the real state
+        WalletClient.get().refresh();
 
         // Check for internet connection
         if (!commonUtilInterface.isNetworkAvailable()) {
@@ -303,6 +342,7 @@ public class GameSettingScreen implements Screen, BackHandler {
 
     @Override
     public void dispose() {
+        WalletClient.get().removeListener(walletListener);
         stage.dispose();
     }
 

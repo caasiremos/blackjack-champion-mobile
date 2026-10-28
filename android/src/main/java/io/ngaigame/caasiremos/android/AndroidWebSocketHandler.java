@@ -105,7 +105,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
 
             @Override
             public void onMessage(@NonNull WebSocket webSocket, @NonNull String message) {
-                log("Message from ratchet: " + message);
+                log("Message from ratchet: " + redact(message));
                 if (message.contains("\"status\":\"error\"") && message.contains("Invalid credentials") && sessionRejectedListener != null) {
                     mainHandler.post(sessionRejectedListener);
                 }
@@ -150,7 +150,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
     public void sendMessage(String message) {
         if (socket != null) {
             socket.send(message);
-            log("Sent: " + message);
+            log("Sent: " + redact(message));
         } else {
             Log.w(TAG, "Cannot send message - not connected");
         }
@@ -223,5 +223,14 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
 
     private void log(String message) {
         Log.d(TAG, message);
+    }
+
+    /**
+     * Keep login tokens and phone numbers out of the device log.
+     */
+    private static String redact(String message) {
+        return message
+            .replaceAll("\"token\"\\s*:\\s*\"[^\"]*\"", "\"token\":\"***\"")
+            .replaceAll("\"phone_number\"\\s*:\\s*\"[^\"]*\"", "\"phone_number\":\"***\"");
     }
 }
