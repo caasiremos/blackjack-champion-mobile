@@ -481,7 +481,7 @@ public class WalletDialog implements WalletClient.Listener {
     }
 
     private Image spinner() {
-        Image chip = new Image(assetStore.otherComponents.findRegion("casino_chip"));
+        Image chip = new Image(assetStore.otherComponents.findRegion("royal_chip"));
         chip.setSize(110, 110);
         chip.setOrigin(Align.center);
         chip.addAction(Actions.forever(Actions.rotateBy(-360f, 1.4f)));

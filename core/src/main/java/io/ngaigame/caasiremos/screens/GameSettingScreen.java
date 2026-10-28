@@ -53,7 +53,7 @@ public class GameSettingScreen implements Screen, BackHandler {
     private final Stage stage;
     private final ExtendViewport extendViewport;
 
-    private final Image streetChipImage, casinoChipImage, stakesChipImage, bossChipImage, legendChipImage;
+    private final Image streetChipImage, stakesChipImage, bossChipImage, legendChipImage, royalChipImage;
     private final Map<String, ChipBadge> chipBadges = new LinkedHashMap<>();
     private final Image backgroundImage;
     private String pendingRequestId; // store request ID when message arrives
@@ -81,13 +81,13 @@ public class GameSettingScreen implements Screen, BackHandler {
         // Create images
         // Coin art plus the chip's name in the game fonts; the coins are what you tap
         for (String key : ChipBadge.KEYS) {
-            chipBadges.put(key, new ChipBadge(assetStore, key, 240));
+            chipBadges.put(key, new ChipBadge(assetStore, key, 280));
         }
         streetChipImage = chipBadges.get("street").coin;
-        casinoChipImage = chipBadges.get("casino").coin;
         stakesChipImage = chipBadges.get("stakes").coin;
         bossChipImage = chipBadges.get("boss").coin;
         legendChipImage = chipBadges.get("legend").coin;
+        royalChipImage = chipBadges.get("royal").coin;
         backgroundImage = assetStore.blueBackground();
 
         // Set background full screen
@@ -205,10 +205,10 @@ public class GameSettingScreen implements Screen, BackHandler {
 
     private void handleChipClicks() {
         setupChipClick(streetChipImage, "street");
-        setupChipClick(casinoChipImage, "casino");
         setupChipClick(stakesChipImage, "stakes");
         setupChipClick(bossChipImage, "boss");
         setupChipClick(legendChipImage, "legend");
+        setupChipClick(royalChipImage, "royal");
     }
 
     private void setupChipClick(Image chipImage, String chipName) {
@@ -249,7 +249,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         }
 
         // Reset all chips
-        Image[] allChips = {streetChipImage, casinoChipImage, stakesChipImage, bossChipImage, legendChipImage};
+        Image[] allChips = {streetChipImage, stakesChipImage, bossChipImage, legendChipImage, royalChipImage};
         for (Image chip : allChips) {
             chip.clearActions();
             chip.setColor(Color.WHITE); // Reset tint
@@ -258,10 +258,10 @@ public class GameSettingScreen implements Screen, BackHandler {
 
         // Highlight the selected one
         Image selectedImage = switch (selectedChip) {
-            case "casino" -> casinoChipImage;
             case "stakes" -> stakesChipImage;
             case "boss" -> bossChipImage;
             case "legend" -> legendChipImage;
+            case "royal" -> royalChipImage;
             default -> streetChipImage;
         };
 

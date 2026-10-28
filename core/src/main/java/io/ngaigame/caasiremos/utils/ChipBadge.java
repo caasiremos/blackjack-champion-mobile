@@ -55,34 +55,34 @@ public class ChipBadge extends Table {
     /**
      * The chips players can pick, smallest first. Must match the server's stakes.
      */
-    public static final String[] KEYS = {"street", "casino", "stakes", "boss", "legend"};
+    public static final String[] KEYS = {"street", "stakes", "boss", "legend", "royal"};
 
     /**
-     * street / casino / stakes / boss / legend for a stake amount.
+     * street / stakes / boss / legend / royal for a stake amount.
      */
     public static String keyForAmount(int amount) {
         return switch (amount) {
-            case 250 -> "casino";
             case 500 -> "stakes";
             case 1000 -> "boss";
             case 2000 -> "legend";
+            case 5000 -> "royal";
             default -> "street";
         };
     }
 
     public static int amountOf(String key) {
         return switch (key) {
-            case "casino" -> 250;
             case "stakes" -> 500;
             case "boss" -> 1000;
             case "legend" -> 2000;
-            default -> 100;
+            case "royal" -> 5000;
+            default -> 200;
         };
     }
 
     /**
-     * The chip saved as the player's choice; one that no longer exists (the old 50 "rockie")
-     * becomes the smallest chip.
+     * The chip saved as the player's choice; one that no longer exists (the old 50 "rockie" or
+     * 250 "casino") becomes the smallest chip.
      */
     public static String selectedKey() {
         String saved = Gdx.app.getPreferences(GamePoint.GAME_PREFS).getString("selected_chip", KEYS[0]);
@@ -94,20 +94,20 @@ public class ChipBadge extends Table {
 
     private static String nameOf(String key) {
         return switch (key) {
-            case "casino" -> "CASINO";
             case "stakes" -> "STAKES";
             case "boss" -> "BOSS";
             case "legend" -> "LEGEND";
+            case "royal" -> "ROYAL";
             default -> "STREET";
         };
     }
 
     private static String taglineOf(String key) {
         return switch (key) {
-            case "casino" -> "CRAWL";
             case "stakes" -> "HYPE";
             case "boss" -> "BENCH";
             case "legend" -> "LEAGUE";
+            case "royal" -> "FLUSH";
             default -> "HUSTLE";
         };
     }

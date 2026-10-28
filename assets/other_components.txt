@@ -171,7 +171,7 @@ card_chip_group
   orig: 547, 498
   offset: 0, 0
   index: -1
-casino_chip
+royal_chip
   rotate: false
   xy: 0, 1106
   size: 314, 305
