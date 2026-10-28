@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
@@ -36,6 +37,8 @@ import io.ngaigame.caasiremos.sockets.WebSocketHandler;
 import io.ngaigame.caasiremos.utils.CommonGameFunctions;
 import io.ngaigame.caasiremos.utils.CommonUtilInterface;
 import io.ngaigame.caasiremos.utils.OverlayContainer;
+import io.ngaigame.caasiremos.utils.UiKit;
+import io.ngaigame.caasiremos.utils.WalletDialog;
 import io.ngaigame.caasiremos.utils.Util;
 
 public class GameSettingScreen implements Screen, BackHandler {
@@ -49,7 +52,7 @@ public class GameSettingScreen implements Screen, BackHandler {
 
     private final Image rockieChipImage, streetChipImage, casinoChipImage, stakesChipImage, bossChipImage;
     private final Map<String, ChipBadge> chipBadges = new LinkedHashMap<>();
-    private final Image helpButtonImage, settingButtonImage, backgroundImage;
+    private final Image backgroundImage;
     private String pendingRequestId; // store request ID when message arrives
 
     public Label timeCountLabel, opponentNameLabel;
@@ -68,8 +71,6 @@ public class GameSettingScreen implements Screen, BackHandler {
         this.stage = new Stage(extendViewport);
 
         // Load texture regions
-        TextureRegion helpButtonTR = assetStore.otherComponents.findRegion("button_help");
-        TextureRegion settingButtonTR = assetStore.otherComponents.findRegion("button_settings");
         TextureRegion backgroundTR = assetStore.backgroundComponents.findRegion("background");
 
         // Create images
@@ -82,49 +83,11 @@ public class GameSettingScreen implements Screen, BackHandler {
         casinoChipImage = chipBadges.get("casino").coin;
         stakesChipImage = chipBadges.get("stakes").coin;
         bossChipImage = chipBadges.get("boss").coin;
-        helpButtonImage = new Image(helpButtonTR);
-        settingButtonImage = new Image(settingButtonTR);
         backgroundImage = assetStore.blueBackground();
 
         // Set background full screen
         backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
         backgroundImage.setPosition(0, 0);
-
-        // Responsive sizes
-        float screenWidth = stage.getViewport().getWorldWidth();
-        float screenHeight = stage.getViewport().getWorldHeight();
-        float buttonWidth = screenWidth * 10;
-        float buttonHeight = screenHeight * 5f;
-
-        helpButtonImage.setSize(buttonWidth, buttonHeight);
-        settingButtonImage.setSize(buttonWidth, buttonHeight);
-
-        helpButtonImage.addListener(new ClickListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                helpButtonImage.addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
-            }
-
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                helpButtonImage.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-            }
-        });
-
-        settingButtonImage.addListener(new ClickListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                settingButtonImage.addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
-            }
-
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                settingButtonImage.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-            }
-        });
-
 
         // Chip layout
         Table chipTable = new Table();
@@ -135,9 +98,16 @@ public class GameSettingScreen implements Screen, BackHandler {
 
         // Button layout
         Table buttonTable = new Table();
-        buttonTable.add(helpButtonImage).expandX().left().padLeft(30).width(450).height(150);
+        TextButton depositButton = UiKit.button(assetStore, "DEPOSIT", UiKit.Style.PRIMARY,
+            () -> WalletDialog.show(stage, assetStore, "DEPOSIT", "Add money from your mobile money number.",
+                // Not connected to the server yet
+                (phone, amount) -> commonUtilInterface.showToast("Deposits are coming soon")));
+        TextButton withdrawButton = UiKit.button(assetStore, "WITHDRAW", UiKit.Style.SECONDARY,
+            () -> WalletDialog.show(stage, assetStore, "WITHDRAW", "Send money to your mobile money number.",
+                (phone, amount) -> commonUtilInterface.showToast("Withdrawals are coming soon")));
+        buttonTable.add(depositButton).expandX().left().padLeft(30).width(450).height(150);
         buttonTable.add().expandX(); // Spacer
-        buttonTable.add(settingButtonImage).expandX().right().padRight(30).width(450).height(150);
+        buttonTable.add(withdrawButton).expandX().right().padRight(30).width(450).height(150);
 
         // Main layout
         Table mainTable = new Table();
@@ -175,7 +145,7 @@ public class GameSettingScreen implements Screen, BackHandler {
                         if ("game_request".equals(action)) {
                             pendingRequestId = jsonObject.get("request_id").getAsString();
                             String fromName = jsonObject.has("from_name") ? jsonObject.get("from_name").getAsString() : "A player";
-                            showGameRequestDialog(settingButtonImage, fromName, jsonObject.get("amount").getAsInt());
+                            showGameRequestDialog(fromName, jsonObject.get("amount").getAsInt());
                         } else if ("game_started".equals(action)) {
                             pendingRequestId = null;
                             CommonGameFunctions.hideOverlayScreen(true);
@@ -352,7 +322,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         webSocketHandler.sendMessage(jsonString);
     }
 
-    private void showGameRequestDialog(Image image, String fromName, int amount) {
+    private void showGameRequestDialog(String fromName, int amount) {
         OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage);
 
         float buttonWidth = 370f, buttonHeight = 120f;
@@ -370,7 +340,9 @@ public class GameSettingScreen implements Screen, BackHandler {
         // Arrange items vertically
         table.add(opponentNameLabel).padBottom(20f).row();
         table.add(timeCountLabel).padBottom(20f).row();
-        table.add(image).size(buttonWidth, buttonHeight).padBottom(20f).row();
+        // The server answers with game_started, which opens the table
+        TextButton acceptButton = UiKit.button(assetStore, "ACCEPT", UiKit.Style.PRIMARY, this::acceptInitiatedGame);
+        table.add(acceptButton).size(buttonWidth, buttonHeight).padBottom(20f).row();
 
         overlay.addActor(table);
         CommonGameFunctions.showOverlay();
@@ -396,24 +368,6 @@ public class GameSettingScreen implements Screen, BackHandler {
                 });
             }
         }, 0, 1, 5);
-
-        // The same button is reused for every request
-        image.clearListeners();
-        image.addListener(new ClickListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                image.addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
-            }
-
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                image.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-                // The server answers with game_started, which opens the table
-                acceptInitiatedGame();
-            }
-        });
-
     }
 
 
