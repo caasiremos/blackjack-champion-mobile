@@ -31,7 +31,6 @@ import io.ngaigame.caasiremos.BackHandler;
 import io.ngaigame.caasiremos.MainBlackJack;
 import io.ngaigame.caasiremos.utils.ChipBadge;
 import io.ngaigame.caasiremos.utils.PlayerApi;
-import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.points.GamePoint;
 import io.ngaigame.caasiremos.sockets.WebSocketHandler;
 import io.ngaigame.caasiremos.utils.CommonGameFunctions;
@@ -47,7 +46,6 @@ import io.ngaigame.caasiremos.utils.Util;
 public class GameSettingScreen implements Screen, BackHandler {
     private final Game game;
     private final AssetStore assetStore;
-    private final AdHandler adHandler;
     private final WebSocketHandler webSocketHandler;
     private final CommonUtilInterface commonUtilInterface;
     private final Stage stage;
@@ -65,12 +63,11 @@ public class GameSettingScreen implements Screen, BackHandler {
     private final WalletClient.Listener walletListener;
 
     public GameSettingScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
-                             AdHandler adHandler, WebSocketHandler webSocketHandler,
+                             WebSocketHandler webSocketHandler,
                              CommonUtilInterface commonUtilInterface) {
         this.game = game;
         this.extendViewport = extendViewport;
         this.assetStore = assetStore;
-        this.adHandler = adHandler;
         this.webSocketHandler = webSocketHandler;
         this.commonUtilInterface = commonUtilInterface;
         this.stage = new Stage(extendViewport);
@@ -187,7 +184,7 @@ public class GameSettingScreen implements Screen, BackHandler {
                             pendingRequestId = null;
                             CommonGameFunctions.hideOverlayScreen(true);
                             overlayShowing = false;
-                            ((MainBlackJack) game).pushScreen(new TwoPlayerGamePlayScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface, message));
+                            ((MainBlackJack) game).pushScreen(new TwoPlayerGamePlayScreen(game, assetStore, extendViewport, webSocketHandler, commonUtilInterface, message));
                         } else if ("request_canceled".equals(action) || "request_expired".equals(action)) {
                             pendingRequestId = null;
                             CommonGameFunctions.hideOverlayScreen(true);
@@ -235,7 +232,7 @@ public class GameSettingScreen implements Screen, BackHandler {
 
                 // Navigate to OnlinePlayersScreen
                 ((MainBlackJack) game).pushScreen(new OnlinePlayersScreen(
-                    game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface
+                    game, assetStore, extendViewport, webSocketHandler, commonUtilInterface
                 ));
             }
         });

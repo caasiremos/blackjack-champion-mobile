@@ -70,10 +70,6 @@ public class PlayerApi {
         request(Net.HttpMethods.PATCH, "/player/me", body.toString(), callback);
     }
 
-    public static void claimAdReward(Callback callback) {
-        request(Net.HttpMethods.POST, "/player/ad-reward", "{}", callback);
-    }
-
     /**
      * Socket messages that carry the player's profile ("authenticated", "balance_updated",
      * "profile", "leaderboard") update the local balance through here.

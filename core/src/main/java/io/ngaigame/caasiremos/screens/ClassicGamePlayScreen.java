@@ -1,8 +1,5 @@
 package io.ngaigame.caasiremos.screens;
 
-import static io.ngaigame.caasiremos.ads.Ads.showBannerAd;
-import static io.ngaigame.caasiremos.ads.Ads.showInterstitialAd;
-import static io.ngaigame.caasiremos.ads.Ads.showRewardAdsDialog;
 import static io.ngaigame.caasiremos.utils.Settings.showMenuItemDialog;
 import static io.ngaigame.caasiremos.utils.Util.blackJackEffect;
 import static io.ngaigame.caasiremos.utils.Util.buttonSize;
@@ -38,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 
 import io.ngaigame.caasiremos.MainBlackJack;
-import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.AssetStore;
 import io.ngaigame.caasiremos.BackHandler;
 import io.ngaigame.caasiremos.cards.Card;
@@ -59,7 +55,6 @@ import io.ngaigame.caasiremos.utils.PlayerApi;
 import io.ngaigame.caasiremos.utils.Util;
 
 public class ClassicGamePlayScreen implements Screen, BackHandler {
-    public AdHandler adHandler;
     public WebSocketHandler webSocketHandler;
     public CommonUtilInterface commonUtilInterface;
     AssetStore assetStore;
@@ -73,7 +68,7 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
     public CardDealer playerHandDealer, dealerHandDealer;
 
     //Button regions
-    TextureRegion hitTR, standTR, splitTR, doubleTR, insureTR, dealTR, strategyTR, addTR, pushTR, quitTR, restartTR, resumeTR, settingTR, surrenderTR;
+    TextureRegion hitTR, standTR, splitTR, doubleTR, insureTR, dealTR, strategyTR, pushTR, quitTR, restartTR, resumeTR, settingTR, surrenderTR;
 
     //Chip regions
     TextureRegion chip_50TR, chip_100TR, chip_250TR, chip_500TR, chip_1000TR; //TR Texture Region
@@ -85,7 +80,7 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
     TextureRegion chipsTR, exitTR, menusTR, musicOffTR, musicOnTR, restartsTR, rewardButtonTR, shareTR, soundOffTR, soundOnTR;
 
     Image backgroundImage, deckImage, hitImage, splitImage, doubleImage, standImage, insureImage,
-        dealImage, pushImage, strategyImage, addImage, settingImage, restartImage, quitImage, resumeImage,
+        dealImage, pushImage, strategyImage, settingImage, restartImage, quitImage, resumeImage,
         surrenderImage, menuImage, counterBackgroundImageDealer, counterBackgroundImagePlayer, scoresImage, startImage, winDialogImage, looseDialogImage,
         counterBackgroundImageSplitHandOne, counterBackgroundImageSplitHandTwo, chipsImage, exitImage, menusImage, musicOffImage, musicOnImage, restartsImage, rewardButtonImage, shareImage, soundsOffImage, soundOnImage;
 
@@ -96,7 +91,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
     public Boolean isBlackJack = false;
     public Boolean standSplitHand1 = false; //tracks if the player hits stand on the first split stage
     public Boolean standSplitHand2 = false; //tracks if the player hits stand on the second split stage
-    Label chipTitleLabel, watchBonusLabel;
     boolean overlayShowing = false;
     private boolean roundReported = false;
     boolean betPlaced = false;
@@ -113,12 +107,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
     Label.LabelStyle labelStyle, blackJackLabelStyle, dialogFontLabelStyle, betAmountLabelStyle, timeCountLabelStyle, opponentLabelStyle;
 
     List<CardChips> cardChips;
-    private int gamesPlayed = 0; // Track the number of games played interstitialAd
-    private int nextAdTrigger = Util.getRandomThreshold(6, 10);
-
-    private int bannerAdGamesPlayed = 0; // Track the number of games played interstitialAd
-    private int nextBannerAdTrigger = Util.getRandomThreshold(4, 2);
-
     private String pendingRequestId; // store request ID when message arrives
 
 
@@ -126,12 +114,11 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         this.assetStore = assetStore;
     }
 
-    public ClassicGamePlayScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport, AdHandler adHandler, WebSocketHandler webSocketHandler, CommonUtilInterface commonUtilInterface) {
+    public ClassicGamePlayScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport, WebSocketHandler webSocketHandler, CommonUtilInterface commonUtilInterface) {
         this.assetStore = assetStore;
         stage = new Stage(extendViewport);
         this.game = game;
         Gdx.input.setInputProcessor(stage);
-        this.adHandler = adHandler;
         this.commonUtilInterface = commonUtilInterface;
         this.webSocketHandler = webSocketHandler;
 
@@ -171,7 +158,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         strategyTR = assetStore.components.findRegion("button_strategy");
         pushTR = assetStore.components.findRegion("button_push");
         restartTR = assetStore.components.findRegion("button_restart");
-        addTR = assetStore.components.findRegion("button_add");
         pushTR = assetStore.components.findRegion("button_push");
         settingTR = assetStore.components.findRegion("button_setting");
         quitTR = assetStore.components.findRegion("button_quit");
@@ -252,7 +238,7 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
                 public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
                     super.touchUp(event, x, y, pointer, button);
                     if (gamePoint.getPoints() < chip.amount) {
-                        showRewardAdsDialog(ClassicGamePlayScreen.this, stage, gamePoint, adHandler, chipTitleLabel, chipsImage, watchBonusLabel, rewardButtonImage, exitImage, pointsLabel, overlayShowing);
+                        commonUtilInterface.showToast("Not enough chips for this bet");
                         return;
                     }
 
@@ -301,22 +287,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         }
     }
 
-    private void addPointImplementation() {
-        addImage.addListener(new ClickListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                addImage.addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
-            }
-
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                addImage.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-                showRewardAdsDialog(ClassicGamePlayScreen.this, stage, gamePoint, adHandler, chipTitleLabel, chipsImage, watchBonusLabel, rewardButtonImage, exitImage, pointsLabel, overlayShowing);
-            }
-        });
-    }
-
 
     private void loadPoints() {
         labelStyle = new Label.LabelStyle(assetStore.font, Color.WHITE);
@@ -329,10 +299,8 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         // Add the label to the stage
         scoresImage.setSize(scoresImage.getWidth() + 200, scoresImage.getHeight() + 100);
         scoresImage.setPosition(50, 10);
-        addImage.setSize(addImage.getWidth() * 2, addImage.getHeight() * 2);
         pointsLabel.setPosition(200, 85);
         stage.addActor(scoresImage);
-        stage.addActor(addImage);
         stage.addActor(pointsLabel);
     }
 
@@ -457,27 +425,7 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
 
                 // Check if player has enough points for the double bet
                 if (gamePoint.getPoints() < lastSelectedChip.amount) {
-                    if (adHandler != null) {
-                        // Chips already moved this round (the bet), which the server hasn't seen yet
-                        final int inRoundChange = gamePoint.getPoints() - currentPoint;
-                        adHandler.showRewardedAd(() -> Gdx.app.postRunnable(() ->
-                            PlayerApi.claimAdReward(new PlayerApi.Callback() {
-                                @Override
-                                public void onSuccess(JsonObject player) {
-                                    // The reward belongs to the round's starting chips, not to its result
-                                    int balance = player.get("balance").getAsInt();
-                                    currentPoint = balance;
-                                    gamePoint.storePoints(balance + inRoundChange);
-                                    pointsLabel.setText(GamePoint.POINTS + gamePoint.getPoints());
-                                    pointsLabel.layout();
-                                }
-
-                                @Override
-                                public void onFailure(String message) {
-                                    commonUtilInterface.showToast(PlayerApi.readableMessage(message));
-                                }
-                            })));
-                    }
+                    commonUtilInterface.showToast("Not enough chips to double");
                     return;
                 }
 
@@ -1083,10 +1031,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
             }
         }
 
-        adHandler.setBannerPosition(AdHandler.BANNER_POSITION_CENTER, 5); // bottom center
-        adHandler.showBannerAd();
-        showBannerAd(adHandler, bannerAdGamesPlayed, nextBannerAdTrigger);
-
         playerHandDealer = new CardDealer(assetStore, overlay.getStage(), hitImage.getHeight() + hitImage.getHeight() / 4);
         playerHandDealer.dealGameOverCards(overlay.getStage(), playerHand.cards, playerHandDealer.centerOfCenterXPositionRight(hitImage), stage.getHeight() / 2);
 
@@ -1116,9 +1060,7 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
                 playerHand.clear();
                 dealerHand.clear();
 
-                showInterstitialAd(adHandler, gamesPlayed, nextAdTrigger);
                 newGame();
-                adHandler.hideBannerAd();
             }
         });
 
@@ -1183,14 +1125,12 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         startImage = new Image(starTR);
         quitImage = new Image(quitTR);
         strategyImage = new Image(strategyTR);
-        addImage = new Image(addTR);
         restartImage = new Image(restartTR);
         scoresImage = new Image(scoresTR);
         resumeImage = new Image(resumeTR);
         surrenderImage = new Image(surrenderTR);
         quitImage = new Image(quitTR);
 
-        chipTitleLabel = GameText.title(assetStore, "NEED MORE CHIPS?");
         chipsImage = new Image(chipsTR);
         exitImage = new Image(exitTR);
         menusImage = new Image(menusTR);
@@ -1201,7 +1141,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         shareImage = new Image(shareTR);
         soundsOffImage = new Image(soundOffTR);
         soundOnImage = new Image(soundOnTR);
-        watchBonusLabel = GameText.label(assetStore.messageFont, "Simply watch an ad for a 5,000 chip bonus.");
 
         counterBackgroundImagePlayer = new Image(counterBackgroundTR);
         counterBackgroundImageDealer = new Image(counterBackgroundTR);
@@ -1266,7 +1205,6 @@ public class ClassicGamePlayScreen implements Screen, BackHandler {
         splitImplementation();
         doubleImplementation();
         insuranceImplementation();
-        addPointImplementation();
 
         standSplitHand1 = false; //stand on first split hand
         standSplitHand2 = false; //stand on second split hand

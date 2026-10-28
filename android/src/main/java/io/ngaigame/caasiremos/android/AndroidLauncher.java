@@ -11,18 +11,14 @@ import android.widget.FrameLayout;
 
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
-import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.MobileAds;
 
 import io.ngaigame.caasiremos.MainBlackJack;
 
 
 public class AndroidLauncher extends AndroidApplication{
-    private AndroidAdHandler androidAdHandler;
     private GoogleSignInHandler googleSignInHandler;
     private AndroidWebSocketHandler androidWebSocketClient;
     private AndroidCommonUtilInterface androidToast;
-    AdView adView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,11 +28,6 @@ public class AndroidLauncher extends AndroidApplication{
         configuration.useImmersiveMode = true;
 
 
-        // Initialize AdMob
-        MobileAds.initialize(this, initializationStatus -> {});
-
-        // Create the AndroidAdHandler
-        androidAdHandler = new AndroidAdHandler(this);
         androidWebSocketClient = new AndroidWebSocketHandler(this);
         androidToast = new AndroidCommonUtilInterface(this);
         googleSignInHandler = new GoogleSignInHandler(this, androidWebSocketClient);
@@ -50,26 +41,15 @@ public class AndroidLauncher extends AndroidApplication{
 
 
         // Initialize game view and add to layout
-        View gameView = initializeForView(new MainBlackJack(androidAdHandler, androidWebSocketClient, googleSignInHandler, androidToast), configuration);
+        View gameView = initializeForView(new MainBlackJack(androidWebSocketClient, googleSignInHandler, androidToast), configuration);
         layout.addView(gameView);
 
         // Set content view
         setContentView(layout);
-
-
-        // Load ads (banner, interstitial, rewarded)
-        androidAdHandler.setRootLayout(layout); // Pass the layout to adHandler if needed
-        androidAdHandler.loadBannerAd(); // Now it can add the ad to the layout
-        androidAdHandler.loadInterstitialAd();
-        androidAdHandler.loadRewardedAd();
-
     }
 
     @Override
     protected void onPause() {
-        if (adView != null) {
-            adView.pause();
-        }
         googleSignInHandler.onAppPaused();
         super.onPause();
     }
@@ -77,18 +57,7 @@ public class AndroidLauncher extends AndroidApplication{
     @Override
     protected void onResume() {
         super.onResume();
-        if (adView != null) {
-            adView.resume();
-        }
         googleSignInHandler.onAppResumed();
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (adView != null) {
-            adView.destroy();
-        }
-        super.onDestroy();
     }
 
     public static boolean isNetworkAvailable(Context context) {

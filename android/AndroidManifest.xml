@@ -17,9 +17,6 @@
         android:theme="@style/GdxTheme"
         android:usesCleartextTraffic="true"
         tools:ignore="UnusedAttribute">
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-4983287985456951~1957760137"/>
         <activity
             android:name="io.ngaigame.caasiremos.android.AndroidLauncher"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"

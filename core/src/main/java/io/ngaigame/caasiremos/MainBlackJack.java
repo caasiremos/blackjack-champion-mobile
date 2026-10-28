@@ -9,7 +9,6 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 
 import java.util.Stack;
 
-import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.auth.GoogleSignInInterface;
 import io.ngaigame.caasiremos.screens.SplashScreen;
 import io.ngaigame.caasiremos.sockets.WebSocketHandler;
@@ -23,9 +22,6 @@ public class MainBlackJack extends Game {
     AssetStore assetStore;
     ExtendViewport extendViewport;
     OrthographicCamera orthographicCamera;
-
-
-    private final AdHandler adHandler;
     private final WebSocketHandler webSocketHandler;
     private final GoogleSignInInterface googleSignInInterface;
     private final CommonUtilInterface commonUtilInterface;
@@ -35,8 +31,7 @@ public class MainBlackJack extends Game {
     private long lastRootBackPress = 0;
 
 
-    public MainBlackJack(AdHandler adHandler, WebSocketHandler webSocketHandler, GoogleSignInInterface googleSignInInterface, CommonUtilInterface commonUtilInterface) {
-        this.adHandler = adHandler;
+    public MainBlackJack(WebSocketHandler webSocketHandler, GoogleSignInInterface googleSignInInterface, CommonUtilInterface commonUtilInterface) {
         this.webSocketHandler = webSocketHandler;
         this.googleSignInInterface = googleSignInInterface;
         this.commonUtilInterface = commonUtilInterface;
@@ -52,7 +47,7 @@ public class MainBlackJack extends Game {
         extendViewport = new ExtendViewport(1920, 1080, orthographicCamera);
         assetStore = new AssetStore();
         assetStore.loadAssets();
-        setScreen(new SplashScreen(this, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
+        setScreen(new SplashScreen(this, assetStore, extendViewport, webSocketHandler, commonUtilInterface));
     }
 
     public void pushScreen(Screen screen) {

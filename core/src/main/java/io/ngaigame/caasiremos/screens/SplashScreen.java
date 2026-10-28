@@ -19,7 +19,6 @@ import com.badlogic.gdx.utils.Scaling;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 
 import io.ngaigame.caasiremos.MainBlackJack;
-import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.auth.GoogleSignInInterface;
 import io.ngaigame.caasiremos.sockets.WebSocketHandler;
 import io.ngaigame.caasiremos.utils.GameText;
@@ -36,7 +35,6 @@ public class SplashScreen implements Screen {
     ExtendViewport extendViewport;
 
     AssetStore assetStore;
-    AdHandler adHandler;
     WebSocketHandler webSocketHandler;
     CommonUtilInterface commonUtilInterface;
     Stage stage;
@@ -51,12 +49,11 @@ public class SplashScreen implements Screen {
     private boolean leaving = false;
 
     public SplashScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
-                        AdHandler adHandler, WebSocketHandler webSocketHandler,
+                        WebSocketHandler webSocketHandler,
                         CommonUtilInterface commonUtilInterface) {
         stage = new Stage(extendViewport);
         this.game = game;
         this.assetStore = assetStore;
-        this.adHandler = adHandler;
         this.webSocketHandler = webSocketHandler;
         this.commonUtilInterface = commonUtilInterface;
         this.extendViewport = extendViewport;
@@ -112,7 +109,7 @@ public class SplashScreen implements Screen {
 
         leaving = true;
         // Replace rather than push: back from the lobby exits instead of returning to the splash
-        ((MainBlackJack) game).replaceScreen(new GameSettingScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface));
+        ((MainBlackJack) game).replaceScreen(new GameSettingScreen(game, assetStore, extendViewport, webSocketHandler, commonUtilInterface));
     }
 
     private void requestSignIn() {

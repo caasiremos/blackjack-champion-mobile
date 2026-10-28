@@ -1,7 +1,5 @@
 package io.ngaigame.caasiremos.screens;
 
-import static io.ngaigame.caasiremos.ads.Ads.showBannerAd;
-import static io.ngaigame.caasiremos.ads.Ads.showInterstitialAd;
 import static io.ngaigame.caasiremos.utils.Settings.showMenuItemDialog;
 import static io.ngaigame.caasiremos.utils.Util.blackJackEffect;
 import static io.ngaigame.caasiremos.utils.Util.buttonSize;
@@ -37,7 +35,6 @@ import java.util.Map;
 import io.ngaigame.caasiremos.AssetStore;
 import io.ngaigame.caasiremos.BackHandler;
 import io.ngaigame.caasiremos.MainBlackJack;
-import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.cards.Card;
 import io.ngaigame.caasiremos.cards.CardDealer;
 import io.ngaigame.caasiremos.points.GamePoint;
@@ -64,7 +61,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private static final Color LOW_TIME_TINT = Color.valueOf("#FF5A4A");
 
     private final Game game;
-    public AdHandler adHandler;
     public WebSocketHandler webSocketHandler;
     public CommonUtilInterface commonUtilInterface;
     AssetStore assetStore;
@@ -109,21 +105,15 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private float elapsed = 0;
     private float cardWidth, cardHeight;
 
-    private int gamesPlayed = 0;
-    private final int nextAdTrigger = Util.getRandomThreshold(6, 10);
-    private final int bannerAdGamesPlayed = 0;
-    private final int nextBannerAdTrigger = Util.getRandomThreshold(4, 2);
 
     /**
      * @param gameStartedMessage the server's "game_started" message
      */
-    public TwoPlayerGamePlayScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport, AdHandler adHandler,
-                                   WebSocketHandler webSocketHandler, CommonUtilInterface commonUtilInterface,
+    public TwoPlayerGamePlayScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport, WebSocketHandler webSocketHandler, CommonUtilInterface commonUtilInterface,
                                    String gameStartedMessage) {
         this.game = game;
         this.extendViewport = extendViewport;
         this.assetStore = assetStore;
-        this.adHandler = adHandler;
         this.webSocketHandler = webSocketHandler;
         this.commonUtilInterface = commonUtilInterface;
         stage = new Stage(extendViewport);
@@ -650,16 +640,11 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         playersLink.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                showInterstitialAd(adHandler, ++gamesPlayed, nextAdTrigger);
                 leaveToLobby();
             }
         });
         overlay.addActor(playersLink);
         updateRematchStatus();
-
-        adHandler.setBannerPosition(AdHandler.BANNER_POSITION_CENTER, 5);
-        adHandler.showBannerAd();
-        showBannerAd(adHandler, bannerAdGamesPlayed, nextBannerAdTrigger);
 
         CommonGameFunctions.showOverlay();
         overlayShowing = true;
@@ -745,8 +730,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
                 // Rematch accepted (by either side): same opponent, new table
                 rematchRequestId = null;
                 incomingRematchId = null;
-                adHandler.hideBannerAd();
-                ((MainBlackJack) game).replaceScreen(new TwoPlayerGamePlayScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface, raw));
+                ((MainBlackJack) game).replaceScreen(new TwoPlayerGamePlayScreen(game, assetStore, extendViewport, webSocketHandler, commonUtilInterface, raw));
             }
             default -> {
                 return false;
@@ -836,7 +820,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
         CommonGameFunctions.hideOverlayScreen(true);
         overlayShowing = false;
-        adHandler.hideBannerAd();
         // popScreen disposes this screen
         ((MainBlackJack) game).popScreen();
     }

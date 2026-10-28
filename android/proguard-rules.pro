@@ -50,8 +50,6 @@
 -keepattributes LineNumberTable,SourceFile
 -renamesourcefileattribute SourceFile
 
--keep class com.google.android.gms.ads.** { *; }
--keep class com.google.ads.** { *; }
 
 # LibGDX core reflection
 -keep class com.badlogic.gdx.** { *; }

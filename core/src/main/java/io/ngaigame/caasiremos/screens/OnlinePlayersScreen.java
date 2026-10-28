@@ -28,7 +28,6 @@ import java.util.Map;
 import io.ngaigame.caasiremos.AssetStore;
 import io.ngaigame.caasiremos.BackHandler;
 import io.ngaigame.caasiremos.MainBlackJack;
-import io.ngaigame.caasiremos.ads.AdHandler;
 import io.ngaigame.caasiremos.points.GamePoint;
 import io.ngaigame.caasiremos.sockets.WebSocketHandler;
 import io.ngaigame.caasiremos.utils.CommonGameFunctions;
@@ -45,7 +44,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
     private final Game game;
     private final AssetStore assetStore;
-    private final AdHandler adHandler;
     private final WebSocketHandler webSocketHandler;
     private final CommonUtilInterface commonUtilInterface;
     private final Stage stage;
@@ -70,12 +68,11 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
 
     public OnlinePlayersScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
-                               AdHandler adHandler, WebSocketHandler webSocketHandler,
+                               WebSocketHandler webSocketHandler,
                                CommonUtilInterface commonUtilInterface) {
 
         this.game = game;
         this.assetStore = assetStore;
-        this.adHandler = adHandler;
         this.webSocketHandler = webSocketHandler;
         this.commonUtilInterface = commonUtilInterface;
         this.extendViewport = extendViewport;
@@ -199,7 +196,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             case "request_canceled" -> closeRequestDialog("The challenge was canceled");
             case "game_started" -> {
                 closeRequestDialog(null);
-                ((MainBlackJack) game).pushScreen(new TwoPlayerGamePlayScreen(game, assetStore, extendViewport, adHandler, webSocketHandler, commonUtilInterface, raw));
+                ((MainBlackJack) game).pushScreen(new TwoPlayerGamePlayScreen(game, assetStore, extendViewport, webSocketHandler, commonUtilInterface, raw));
             }
             default -> { }
         }
