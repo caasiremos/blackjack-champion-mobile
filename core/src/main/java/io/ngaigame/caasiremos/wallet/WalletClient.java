@@ -330,28 +330,7 @@ public class WalletClient {
         return currency + " " + String.format(Locale.ENGLISH, "%,d", amount);
     }
 
-    /* Phone numbers (display only; the server validates) */
-
-    /**
-     * Network for a local 07XXXXXXXX number, by the prefixes Temsoft uses; null if not supported.
-     */
-    public static String networkOf(String localNumber) {
-        if (localNumber == null || localNumber.length() != 10 || localNumber.charAt(0) != '0') return null;
-        String prefix = localNumber.substring(1, 3);
-        switch (prefix) {
-            case "76": case "77": case "78": case "79": case "39": return "mtn";
-            case "70": case "74": case "75": case "20": return "airtel";
-            case "72": return "agrotel";
-            default: return null;
-        }
-    }
-
-    public static String networkName(String network) {
-        if ("mtn".equals(network)) return "MTN MoMo";
-        if ("airtel".equals(network)) return "Airtel Money";
-        if ("agrotel".equals(network)) return "Agrotel";
-        return "Mobile money";
-    }
+    /* Phone numbers (display only; the server validates and picks the network) */
 
     /**
      * 0772123456 -> 0772 123 456

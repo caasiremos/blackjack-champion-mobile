@@ -95,8 +95,6 @@ public class WalletDialog implements WalletClient.Listener {
         phoneField.setMaxLength(PHONE_DIGITS);
         phoneField.setTextFieldFilter((textField, c) -> Character.isDigit(c));
         phoneField.setOnscreenKeyboard(visible -> Gdx.input.setOnscreenKeyboardVisible(visible, Input.OnscreenKeyboardType.PhonePad));
-        Label network = GameText.label(assetStore.listFont, "");
-        network.setColor(UiKit.GOLD);
 
         TextField amountField = UiKit.textField(assetStore, amountText, "Amount (UGX)");
         amountField.setMaxLength(MAX_AMOUNT_DIGITS);
@@ -121,9 +119,6 @@ public class WalletDialog implements WalletClient.Listener {
         refreshForm = () -> {
             phone = phoneField.getText();
             amountText = amountField.getText();
-            String detected = WalletClient.networkOf(phone);
-            network.setText(detected != null ? WalletClient.networkName(detected) : "");
-
             if (!wallet.isConnected()) {
                 subtitle.setText("You're offline. Reconnecting...");
             } else if (!wallet.isLoaded()) {
@@ -135,7 +130,7 @@ public class WalletDialog implements WalletClient.Listener {
             }
 
             String problem = validate(phone, amount());
-            next.setDisabled(problem != null || !wallet.isLoaded());
+            next.setDisabled(problem != null);
             if (serverError[0] != null) {
                 hint.setText(serverError[0]);
                 hint.setColor(UiKit.ERROR);
@@ -166,17 +161,13 @@ public class WalletDialog implements WalletClient.Listener {
         });
         refreshForm.run();
 
-        Table phoneRow = new Table();
-        phoneRow.add(phoneField).width(560).height(104);
-        phoneRow.add(network).width(200).padLeft(20).left();
-
         Table buttons = new Table();
         buttons.add(cancel).width(300).height(100).padRight(40);
         buttons.add(next).width(300).height(100);
 
         panel.add(GameText.title(assetStore, action)).padBottom(8).row();
         panel.add(subtitle).padBottom(26).row();
-        panel.add(phoneRow).width(780).padBottom(20).row();
+        panel.add(phoneField).width(780).height(104).padBottom(20).row();
         panel.add(amountField).width(780).height(104).row();
         panel.add(hint).width(780).left().padTop(12).padBottom(24).row();
         panel.add(buttons).row();
@@ -201,17 +192,15 @@ public class WalletDialog implements WalletClient.Listener {
         Table panel = newPanel();
         long amount = amount();
         long fee = deposit ? wallet.getDepositFee() : wallet.getWithdrawalFee();
-        String network = WalletClient.networkOf(phone);
 
         panel.add(GameText.title(assetStore, deposit ? "CONFIRM DEPOSIT" : "CONFIRM WITHDRAWAL")).colspan(2).padBottom(26).row();
         addRow(panel, deposit ? "From" : "To", WalletClient.formatPhone(phone));
-        addRow(panel, "Network", WalletClient.networkName(network));
         addRow(panel, "Amount", wallet.money(amount));
         addRow(panel, "Fee", fee == 0 ? "Free" : wallet.money(fee));
         addRow(panel, deposit ? "You pay" : "Leaves your wallet", wallet.money(amount + fee));
 
         Label note = muted(deposit
-            ? ("mtn".equals(network) ? "You'll get an MTN MoMo prompt. Enter your PIN to approve." : "Approve the payment on your phone if asked.")
+            ? "You'll get a mobile money prompt. Enter your PIN to approve."
             : "The money goes to this number. Make sure it's right.");
         note.setWrap(true);
         note.setAlignment(Align.center);
@@ -299,7 +288,7 @@ public class WalletDialog implements WalletClient.Listener {
         headline.setColor(success ? SUCCESS : failed ? UiKit.ERROR : Color.WHITE);
         panel.add(headline).colspan(2).width(820).padBottom(22).row();
 
-        addRow(panel, transaction.isDeposit() ? "From" : "To", transaction.phone + "  (" + WalletClient.networkName(transaction.network) + ")");
+        addRow(panel, transaction.isDeposit() ? "From" : "To", transaction.phone);
         addRow(panel, "Amount", wallet.money(transaction.amount));
         if (transaction.fee > 0) addRow(panel, "Fee", wallet.money(transaction.fee));
         addRow(panel, "Date", transaction.createdText());
@@ -353,9 +342,7 @@ public class WalletDialog implements WalletClient.Listener {
                 return "The network reversed this transaction. Our team will review it.";
             default:
                 if (!transaction.isDeposit()) return "Sending " + money + " to " + transaction.phone + "...";
-                return "mtn".equals(transaction.network)
-                    ? "Check your phone for the MTN MoMo prompt and enter your PIN."
-                    : "Approve the payment on your phone to finish.";
+                return "Check your phone for the mobile money prompt and enter your PIN.";
         }
     }
 
@@ -454,12 +441,13 @@ public class WalletDialog implements WalletClient.Listener {
      */
     private String validate(String phone, long amount) {
         if (phone.length() < PHONE_DIGITS || phone.charAt(0) != '0') return "Enter your 10-digit number, e.g. 0772123456";
-        if (WalletClient.networkOf(phone) == null) return "Use an MTN or Airtel mobile money number";
         if (amount <= 0) return "Enter an amount";
         if (amount < wallet.getMinAmount()) return "The minimum is " + wallet.money(wallet.getMinAmount());
         if (amount > wallet.getMaxAmount()) return "The maximum is " + wallet.money(wallet.getMaxAmount());
         if (!deposit) {
             if (!wallet.areWithdrawalsEnabled()) return "Withdrawals are disabled for your account";
+            // Until the wallet has loaded the balance is unknown; the server checks it
+            if (!wallet.isLoaded()) return null;
             long total = amount + wallet.getWithdrawalFee();
             if (total > wallet.getBalance()) return "Not enough in your wallet (" + wallet.money(wallet.getBalance()) + " available)";
         }

@@ -19,14 +19,13 @@ public class WalletTransaction {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale.ENGLISH);
 
-    public final String reference, type, status, network, phone, failureMessage, createdAt, completedAt;
+    public final String reference, type, status, phone, failureMessage, createdAt, completedAt;
     public final long amount, fee, total;
 
     WalletTransaction(JsonObject json) {
         reference = text(json, "reference");
         type = text(json, "type");
         status = text(json, "status");
-        network = text(json, "network");
         phone = text(json, "phone");
         failureMessage = text(json, "failure_message");
         createdAt = text(json, "created_at");
