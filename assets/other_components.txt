@@ -1,0 +1,432 @@
+other_components.png
+size: 1982, 1604
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+avatar_one
+  rotate: false
+  xy: 587, 137
+  size: 62, 88
+  orig: 62, 88
+  offset: 0, 0
+  index: -1
+avatar_two
+  rotate: false
+  xy: 1320, 58
+  size: 61, 77
+  orig: 61, 77
+  offset: 0, 0
+  index: -1
+avatar
+  rotate: false
+  xy: 1259, 0
+  size: 41, 41
+  orig: 41, 41
+  offset: 0, 0
+  index: -1
+avatar_three
+  rotate: false
+  xy: 1252, 58
+  size: 68, 76
+  orig: 68, 76
+  offset: 0, 0
+  index: -1
+blackjack
+  rotate: false
+  xy: 649, 137
+  size: 585, 89
+  orig: 585, 89
+  offset: 0, 0
+  index: -1
+boss_chip
+  rotate: false
+  xy: 1668, 801
+  size: 314, 305
+  orig: 314, 305
+  offset: 0, 0
+  index: -1
+bronze
+  rotate: false
+  xy: 1846, 0
+  size: 46, 54
+  orig: 46, 54
+  offset: 0, 0
+  index: -1
+button_accept
+  rotate: false
+  xy: 545, 320
+  size: 202, 97
+  orig: 202, 97
+  offset: 0, 0
+  index: -1
+button_classic
+  rotate: false
+  xy: 685, 58
+  size: 189, 68
+  orig: 189, 68
+  offset: 0, 0
+  index: -1
+button_continue
+  rotate: false
+  xy: 1234, 137
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+button_end
+  rotate: false
+  xy: 1503, 137
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+exit
+  rotate: false
+  xy: 1883, 226
+  size: 94, 94
+  orig: 94, 94
+  offset: 0, 0
+  index: -1
+reward_button
+  rotate: false
+  xy: 1381, 58
+  size: 191, 79
+  orig: 191, 79
+  offset: 0, 0
+  index: -1
+button_help
+  rotate: false
+  xy: 0, 320
+  size: 273, 94
+  orig: 273, 94
+  offset: 0, 0
+  index: -1
+music_off
+  rotate: false
+  xy: 0, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+music_on
+  rotate: false
+  xy: 269, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+button_pause
+  rotate: false
+  xy: 538, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+restart
+  rotate: false
+  xy: 807, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+button_settings
+  rotate: false
+  xy: 273, 320
+  size: 272, 94
+  orig: 272, 94
+  offset: 0, 0
+  index: -1
+share
+  rotate: false
+  xy: 1076, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+sound_off
+  rotate: false
+  xy: 1345, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+sound_on
+  rotate: false
+  xy: 1614, 226
+  size: 269, 89
+  orig: 269, 89
+  offset: 0, 0
+  index: -1
+button_two_player
+  rotate: false
+  xy: 874, 58
+  size: 189, 68
+  orig: 189, 68
+  offset: 0, 0
+  index: -1
+card_chip_group
+  rotate: false
+  xy: 1256, 1106
+  size: 547, 498
+  orig: 547, 498
+  offset: 0, 0
+  index: -1
+casino_chip
+  rotate: false
+  xy: 0, 1106
+  size: 314, 305
+  orig: 314, 305
+  offset: 0, 0
+  index: -1
+chip_100
+  rotate: false
+  xy: 1589, 550
+  size: 314, 251
+  orig: 314, 251
+  offset: 0, 0
+  index: 100
+chip_250
+  rotate: false
+  xy: 0, 801
+  size: 314, 251
+  orig: 314, 251
+  offset: 0, 0
+  index: 250
+chip_500
+  rotate: false
+  xy: 314, 801
+  size: 314, 251
+  orig: 314, 251
+  offset: 0, 0
+  index: 500
+chip_1000
+  rotate: false
+  xy: 628, 801
+  size: 314, 251
+  orig: 314, 251
+  offset: 0, 0
+  index: 1000
+chip_rockie
+  rotate: false
+  xy: 942, 801
+  size: 314, 283
+  orig: 314, 283
+  offset: 0, 0
+  index: -1
+currently
+  rotate: false
+  xy: 0, 137
+  size: 422, 82
+  orig: 422, 82
+  offset: 0, 0
+  index: -1
+divider
+  rotate: false
+  xy: 0, 0
+  size: 600, 4
+  orig: 600, 4
+  offset: 0, 0
+  index: -1
+emoji_five
+  rotate: false
+  xy: 950, 320
+  size: 104, 104
+  orig: 104, 104
+  offset: 0, 0
+  index: -1
+emoji_four
+  rotate: false
+  xy: 1054, 320
+  size: 104, 104
+  orig: 104, 104
+  offset: 0, 0
+  index: -1
+emoji_one
+  rotate: false
+  xy: 747, 320
+  size: 100, 100
+  orig: 100, 100
+  offset: 0, 0
+  index: -1
+emoji_seven
+  rotate: false
+  xy: 1158, 320
+  size: 108, 108
+  orig: 108, 108
+  offset: 0, 0
+  index: -1
+emoji_six
+  rotate: false
+  xy: 847, 320
+  size: 103, 103
+  orig: 103, 103
+  offset: 0, 0
+  index: -1
+emoji_three
+  rotate: false
+  xy: 504, 137
+  size: 83, 83
+  orig: 83, 83
+  offset: 0, 0
+  index: -1
+emoji_two
+  rotate: false
+  xy: 422, 137
+  size: 82, 82
+  orig: 82, 82
+  offset: 0, 0
+  index: -1
+gold
+  rotate: false
+  xy: 1892, 0
+  size: 54, 58
+  orig: 54, 58
+  offset: 0, 0
+  index: -1
+chips
+  rotate: false
+  xy: 1256, 801
+  size: 412, 300
+  orig: 412, 300
+  offset: 0, 0
+  index: -1
+invite
+  rotate: false
+  xy: 1063, 58
+  size: 189, 68
+  orig: 189, 68
+  offset: 0, 0
+  index: -1
+leaderboard
+  rotate: false
+  xy: 1346, 0
+  size: 240, 52
+  orig: 240, 52
+  offset: 0, 0
+  index: -1
+level_eight
+  rotate: false
+  xy: 1266, 320
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_five
+  rotate: false
+  xy: 1493, 320
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_four
+  rotate: false
+  xy: 1720, 320
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_nine
+  rotate: false
+  xy: 0, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_seven
+  rotate: false
+  xy: 227, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_six
+  rotate: false
+  xy: 454, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_ten
+  rotate: false
+  xy: 681, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_three
+  rotate: false
+  xy: 908, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_two
+  rotate: false
+  xy: 1135, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+level_one
+  rotate: false
+  xy: 1362, 550
+  size: 227, 230
+  orig: 227, 230
+  offset: 0, 0
+  index: -1
+menu
+  rotate: false
+  xy: 1300, 0
+  size: 46, 46
+  orig: 46, 46
+  offset: 0, 0
+  index: -1
+chip_title
+  rotate: false
+  xy: 54, 58
+  size: 631, 60
+  orig: 631, 60
+  offset: 0, 0
+  index: -1
+online_gamers
+  rotate: false
+  xy: 1586, 0
+  size: 260, 52
+  orig: 260, 52
+  offset: 0, 0
+  index: -1
+rockie_chip
+  rotate: false
+  xy: 314, 1106
+  size: 314, 305
+  orig: 314, 305
+  offset: 0, 0
+  index: -1
+silver
+  rotate: false
+  xy: 0, 58
+  size: 54, 58
+  orig: 54, 58
+  offset: 0, 0
+  index: -1
+stakes_chip
+  rotate: false
+  xy: 628, 1106
+  size: 314, 305
+  orig: 314, 305
+  offset: 0, 0
+  index: -1
+street_chip
+  rotate: false
+  xy: 942, 1106
+  size: 314, 305
+  orig: 314, 305
+  offset: 0, 0
+  index: -1
+watch_bonus_text
+  rotate: false
+  xy: 600, 0
+  size: 659, 31
+  orig: 659, 31
+  offset: 0, 0
+  index: -1

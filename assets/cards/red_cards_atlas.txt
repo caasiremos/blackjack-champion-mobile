@@ -1,0 +1,187 @@
+red_cards_atlas.png
+size: 396, 1656
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+ACE_DIAMOND
+  rotate: false
+  xy: 0, 0
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+ACE_HEART
+  rotate: false
+  xy: 132, 0
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+EIGHT_DIAMOND
+  rotate: false
+  xy: 264, 0
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+EIGHT_HEART
+  rotate: false
+  xy: 0, 184
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FIVE_DIAMOND
+  rotate: false
+  xy: 132, 184
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FIVE_HEART
+  rotate: false
+  xy: 264, 184
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FOUR_DIAMOND
+  rotate: false
+  xy: 0, 368
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FOUR_HEART
+  rotate: false
+  xy: 132, 368
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+JACK_DIAMOND
+  rotate: false
+  xy: 264, 368
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+JACK_HEART
+  rotate: false
+  xy: 0, 552
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+KING_DIAMOND
+  rotate: false
+  xy: 132, 552
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+KING_HEART
+  rotate: false
+  xy: 264, 552
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+NINE_DIAMOND
+  rotate: false
+  xy: 0, 736
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+NINE_HEART
+  rotate: false
+  xy: 132, 736
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+QUEEN_DIAMOND
+  rotate: false
+  xy: 264, 736
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+QUEEN_HEART
+  rotate: false
+  xy: 0, 920
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SEVEN_DIAMOND
+  rotate: false
+  xy: 132, 920
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SEVEN_HEART
+  rotate: false
+  xy: 264, 920
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SIX_DIAMOND
+  rotate: false
+  xy: 0, 1104
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SIX_HEART
+  rotate: false
+  xy: 132, 1104
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TEN_DIAMOND
+  rotate: false
+  xy: 264, 1104
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TEN_HEART
+  rotate: false
+  xy: 0, 1288
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+THREE_DIAMOND
+  rotate: false
+  xy: 132, 1288
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+THREE_HEART
+  rotate: false
+  xy: 264, 1288
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TWO_DIAMOND
+  rotate: false
+  xy: 0, 1472
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TWO_HEART
+  rotate: false
+  xy: 132, 1472
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1

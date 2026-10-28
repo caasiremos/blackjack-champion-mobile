@@ -1,0 +1,187 @@
+black_cards_atlas.png
+size: 396, 1656
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+ACE_FLOWER
+  rotate: false
+  xy: 0, 0
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+ACE_SPADE
+  rotate: false
+  xy: 132, 0
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+EIGHT_FLOWER
+  rotate: false
+  xy: 264, 0
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+EIGHT_SPADE
+  rotate: false
+  xy: 0, 184
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FIVE_FLOWER
+  rotate: false
+  xy: 132, 184
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FIVE_SPADE
+  rotate: false
+  xy: 264, 184
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FOUR_FLOWER
+  rotate: false
+  xy: 0, 368
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+FOUR_SPADE
+  rotate: false
+  xy: 132, 368
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+JACK_FLOWER
+  rotate: false
+  xy: 264, 368
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+JACK_SPADE
+  rotate: false
+  xy: 0, 552
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+KING_FLOWER
+  rotate: false
+  xy: 132, 552
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+KING_SPADE
+  rotate: false
+  xy: 264, 552
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+NINE_FLOWER
+  rotate: false
+  xy: 0, 736
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+NINE_SPADE
+  rotate: false
+  xy: 132, 736
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+QUEEN_FLOWER
+  rotate: false
+  xy: 264, 736
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+QUEEN_SPADE
+  rotate: false
+  xy: 0, 920
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SEVEN_FLOWER
+  rotate: false
+  xy: 132, 920
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SEVEN_SPADE
+  rotate: false
+  xy: 264, 920
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SIX_FLOWER
+  rotate: false
+  xy: 0, 1104
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+SIX_SPADE
+  rotate: false
+  xy: 132, 1104
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TEN_FLOWER
+  rotate: false
+  xy: 264, 1104
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TEN_SPADE
+  rotate: false
+  xy: 0, 1288
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+THREE_FLOWER
+  rotate: false
+  xy: 132, 1288
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+THREE_SPADE
+  rotate: false
+  xy: 264, 1288
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TWO_FLOWER
+  rotate: false
+  xy: 0, 1472
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
+TWO_SPADE
+  rotate: false
+  xy: 132, 1472
+  size: 132, 184
+  orig: 132, 184
+  offset: 0, 0
+  index: -1
