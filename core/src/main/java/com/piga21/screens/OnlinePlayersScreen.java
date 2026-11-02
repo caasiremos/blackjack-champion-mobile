@@ -333,14 +333,11 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Label nameLabel = GameText.label(assetStore.messageFont, isMe ? name + "  (you)" : name);
         nameLabel.setEllipsis(true);
         if (isMe) nameLabel.setColor(UiKit.GOLD);
-        Label scoreLabel = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", player.has("week_wins") ? player.get("week_wins").getAsInt() : 0));
-        scoreLabel.setColor(UiKit.GOLD);
 
         Table row = new Table();
         row.setBackground(isMe ? UiKit.cardPressed() : UiKit.card());
         row.add(rankCell).size(64, 64).padRight(18);
         row.add(nameLabel).left().expandX().fillX().minWidth(0);
-        row.add(scoreLabel).right().padLeft(12);
         int playerId = player.get("id").getAsInt();
         tappable(row, () -> {
             if (isMe) {
