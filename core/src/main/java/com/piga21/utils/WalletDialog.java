@@ -217,11 +217,8 @@ public class WalletDialog implements WalletClient.Listener {
         TextButton back = UiKit.button(assetStore, "BACK", UiKit.Style.SECONDARY, () -> showForm(null));
         TextButton[] confirm = new TextButton[1];
         confirm[0] = UiKit.button(assetStore, "CONFIRM", UiKit.Style.PRIMARY, () -> {
-            if (!wallet.isConnected()) {
-                wallet.reconnect();
-                showReview("You're offline. Wait for the connection and try again.");
-                return;
-            }
+            // Sent over HTTP; the socket only brings the status updates afterwards
+            if (!wallet.isConnected()) wallet.reconnect();
             // One tap, one request: the buttons go away before anything is sent
             confirm[0].setDisabled(true);
             back.setDisabled(true);
@@ -250,9 +247,7 @@ public class WalletDialog implements WalletClient.Listener {
             panel.add(message("Sending your request...")).width(760).row();
         } else {
             panel.add(message("The server hasn't answered yet.")).width(760).padBottom(8).row();
-            Label detail = muted(wallet.isConnected()
-                ? "You can try again safely. It won't be charged twice."
-                : "You're offline. It will be sent again when you reconnect.");
+            Label detail = muted("Check your connection. You can try again safely. It won't be charged twice.");
             detail.setWrap(true);
             detail.setAlignment(Align.center);
             panel.add(detail).width(760).row();

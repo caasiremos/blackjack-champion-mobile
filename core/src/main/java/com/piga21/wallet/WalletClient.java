@@ -1,10 +1,15 @@
 package com.piga21.wallet;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Net;
+import com.badlogic.gdx.net.HttpRequestBuilder;
+import com.badlogic.gdx.net.HttpStatus;
 import com.badlogic.gdx.utils.Timer;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,12 +18,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import com.piga21.Piga21Game;
 import com.piga21.sockets.WebSocketHandler;
+import com.piga21.utils.Constants;
+import com.piga21.utils.Util;
 
 /**
- * The player's cash wallet (real UGX, separate from play chips), kept in step with the server
- * over the game socket. Balances and statuses shown in the app only ever come from here, and
- * only from what the server sent: nothing is credited on the phone.
+ * The player's points wallet (real money, topped up and redeemed by mobile money), kept in step
+ * with the server. Top ups and redemptions are sent over HTTP so they don't wait on the socket;
+ * the balance, history and status changes come over the game socket. Balances and statuses shown
+ * in the app only ever come from here, and only from what the server sent: nothing is credited
+ * on the phone.
  *
  * Each confirmed deposit/withdrawal gets one request ID. Sending it again (a retry, or after a
  * reconnect) can't create a second transaction: the server answers with the original.
@@ -63,6 +73,7 @@ public class WalletClient {
     // The request awaiting the server's acknowledgement, kept so it can be resent unchanged
     private String pendingRequestId;
     private Map<String, Object> pendingRequest;
+    private String pendingPath;
     private Timer.Task ackTimeout;
 
     public static WalletClient get() {
@@ -115,11 +126,11 @@ public class WalletClient {
      * @return the request ID, used to match the server's answer
      */
     public String deposit(long amount, String phoneNumber) {
-        return start("wallet_deposit", amount, phoneNumber);
+        return start("deposit", amount, phoneNumber);
     }
 
     public String withdraw(long amount, String phoneNumber) {
-        return start("wallet_withdraw", amount, phoneNumber);
+        return start("withdraw", amount, phoneNumber);
     }
 
     /**
@@ -127,7 +138,7 @@ public class WalletClient {
      */
     public void retryPending() {
         if (pendingRequest != null) {
-            send(pendingRequest);
+            post(pendingPath, pendingRequest);
             scheduleAckTimeout(pendingRequestId);
         }
     }
@@ -136,19 +147,74 @@ public class WalletClient {
         return requestId != null && requestId.equals(pendingRequestId);
     }
 
-    private String start(String action, long amount, String phoneNumber) {
+    /**
+     * @param path deposit | withdraw
+     */
+    private String start(String path, long amount, String phoneNumber) {
         String requestId = UUID.randomUUID().toString();
         Map<String, Object> data = new HashMap<>();
-        data.put("action", action);
         data.put("request_id", requestId);
         data.put("amount", amount);
         data.put("phone_number", phoneNumber);
 
         pendingRequestId = requestId;
         pendingRequest = data;
-        send(data);
+        pendingPath = path;
+        post(path, data);
         scheduleAckTimeout(requestId);
         return requestId;
+    }
+
+    /**
+     * The server answers in the same shape as the socket's wallet messages, so the answer goes
+     * through {@link #handle}. No answer (offline, timeout) leaves the request waiting to be resent.
+     */
+    private void post(String path, Map<String, Object> data) {
+        String token = Util.getApiToken();
+        if (token.isEmpty()) return;
+
+        Net.HttpRequest request = new HttpRequestBuilder()
+            .newRequest()
+            .method(Net.HttpMethods.POST)
+            .url(Constants.API_BASE_URL + "/wallet/" + path)
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + token)
+            .timeout((int) (ACK_TIMEOUT_SECONDS * 1000))
+            .content(gson.toJson(data))
+            .build();
+
+        Gdx.net.sendHttpRequest(request, new Net.HttpResponseListener() {
+            @Override
+            public void handleHttpResponse(Net.HttpResponse response) {
+                int status = response.getStatus().getStatusCode();
+                String body = response.getResultAsString();
+                Gdx.app.postRunnable(() -> {
+                    if (status == HttpStatus.SC_UNAUTHORIZED) {
+                        // Saved login no longer valid: get a fresh one, then the request can be resent
+                        if (Gdx.app.getApplicationListener() instanceof Piga21Game game && game.getAuthInterface() != null) {
+                            game.getAuthInterface().onSessionRejected();
+                        }
+                        return;
+                    }
+                    try {
+                        handle(JsonParser.parseString(body).getAsJsonObject());
+                    } catch (Exception e) {
+                        // Not our JSON (a proxy error page, say): treat it as no answer
+                        Gdx.app.error("WalletClient", "Unexpected answer to " + path + " (" + status + ")");
+                    }
+                });
+            }
+
+            @Override
+            public void failed(Throwable t) {
+                Gdx.app.error("WalletClient", path + " failed: " + t.getMessage());
+            }
+
+            @Override
+            public void cancelled() {
+            }
+        });
     }
 
     private void scheduleAckTimeout(String requestId) {
@@ -167,6 +233,7 @@ public class WalletClient {
         if (requestId != null && requestId.equals(pendingRequestId)) {
             pendingRequestId = null;
             pendingRequest = null;
+            pendingPath = null;
             if (ackTimeout != null) ackTimeout.cancel();
         }
     }
