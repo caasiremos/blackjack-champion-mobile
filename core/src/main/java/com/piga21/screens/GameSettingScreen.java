@@ -179,7 +179,7 @@ public class GameSettingScreen implements Screen, BackHandler {
     private Table buildHeading() {
         Table heading = new Table();
         heading.add(GameText.title(assetStore, "CHOOSE YOUR STAKE")).row();
-        Label hint = GameText.label(assetStore.messageFont, "Pick the least you'll play for, then challenge a player");
+        Label hint = GameText.label(assetStore.messageFont, "Pick what you play for, then challenge a player");
         hint.setColor(UiKit.MUTED);
         heading.add(hint).padTop(6);
         return heading;

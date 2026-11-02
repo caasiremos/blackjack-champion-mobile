@@ -118,7 +118,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         centre.add(new ChipBadge(assetStore, ChipBadge.selectedKey(), 300)).row();
         centre.add(balanceLabel).padTop(28).row();
         centre.add(muted("points to play with")).row();
-        Label minimum = muted(String.format(Locale.US, "Players challenge you for %,d or more", ChipBadge.amountOf(ChipBadge.selectedKey())));
+        Label minimum = muted(String.format(Locale.US, "Players challenge you for %,d", ChipBadge.amountOf(ChipBadge.selectedKey())));
         centre.add(minimum).padTop(24).row();
         Label hint = muted("Tap a player to challenge them,\ntap the leaderboard for profiles");
         hint.setAlignment(Align.center);
@@ -391,7 +391,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         String status = inGame ? "In a game" : online ? "Online" : "Offline";
         // Only someone online and free can be challenged
         int stake = message.has("stake") ? message.get("stake").getAsInt() : ChipBadge.amountOf(ChipBadge.KEYS[0]);
-        Runnable challenge = online && !inGame ? () -> showStakePicker(playerId, ProfileDialog.displayName(player), stake) : null;
+        Runnable challenge = online && !inGame ? () -> challenge(playerId, ProfileDialog.displayName(player), stake) : null;
         ProfileDialog.show(stage, assetStore, commonUtilInterface, player, false, status, challenge);
     }
 
@@ -451,19 +451,19 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             // Their chosen stake, on the right
             Label stakeAmount = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", betAmount));
             stakeAmount.setColor(UiKit.GOLD);
-            Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "OR MORE");
+            Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "STAKE");
             stakeCaption.setColor(UiKit.MUTED);
             Table stake = new Table();
             stake.add(stakeAmount).right().row();
             stake.add(stakeCaption).right();
 
-            // Tapping the row picks a stake to challenge them for
+            // Tapping the row challenges them for their stake
             Table row = new Table();
             row.setBackground(UiKit.card());
             row.add(UiKit.initialBadge(assetStore, displayName)).size(72, 72).padRight(18);
             row.add(nameLabel).left().expandX().fillX().minWidth(0);
             row.add(stake).right().padLeft(16).padRight(8);
-            tappable(row, () -> showStakePicker(playerId, displayName, betAmount));
+            tappable(row, () -> challenge(playerId, displayName, betAmount));
 
             // Fade in players who just came online
             if (!knownPlayers.containsKey(displayName)) {
@@ -523,7 +523,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Label detailLabel = GameText.label(assetStore.messageFont, detail);
         detailLabel.setColor(UiKit.MUTED);
         panel.add(detailLabel).padBottom(20).row();
-        if (timeCountLabel != null) panel.add(timeCountLabel).padBottom(30).row();
+        panel.add(timeCountLabel).padBottom(30).row();
         panel.add(buttons).row();
         panel.pack();
         panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() / 2 - panel.getHeight() / 2);
@@ -615,38 +615,15 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     /**
-     * The stakes a player can be challenged for: their own stake or more. Ones above our points are dimmed.
+     * Challenge a player for the stake they chose, if we have the points for it.
      */
-    private void showStakePicker(int opponentId, String opponentName, int minimum) {
+    private void challenge(int opponentId, String opponentName, int stake) {
         WalletClient wallet = WalletClient.get();
-        Table chips = new Table();
-        for (String key : ChipBadge.KEYS) {
-            int amount = ChipBadge.amountOf(key);
-            if (amount < minimum) continue;
-
-            boolean affordable = !wallet.isLoaded() || wallet.getBalance() >= amount;
-            ChipBadge badge = new ChipBadge(assetStore, key, 190);
-            if (!affordable) badge.getColor().a = 0.35f;
-            tappable(badge, () -> {
-                if (!affordable) {
-                    commonUtilInterface.showToast(String.format(Locale.US, "You need %,d points for this stake. Top up to play.", amount));
-                    return;
-                }
-                closeRequestDialog(null);
-                initiateGameRequest(opponentId, opponentName, amount);
-            });
-            chips.add(badge).pad(0, 14, 0, 14);
+        if (wallet.isLoaded() && wallet.getBalance() < stake) {
+            commonUtilInterface.showToast(String.format(Locale.US, "%s plays for %,d points. Top up to play them.", opponentName, stake));
+            return;
         }
-
-        Table buttons = new Table();
-        buttons.add(UiKit.button(assetStore, "CANCEL", UiKit.Style.SECONDARY, () -> closeRequestDialog(null))).width(300).height(100);
-
-        timeCountLabel = null;
-        Table panel = new Table();
-        panel.add(chips).padBottom(36).row();
-        panel.add(buttons);
-        showRequestPanel("CHALLENGE " + opponentName.toUpperCase(Locale.US),
-            String.format(Locale.US, "Pick a stake. %s plays for %,d points or more.", opponentName, minimum), panel);
+        initiateGameRequest(opponentId, opponentName, stake);
     }
 
     private void initiateGameRequest(int opponentId, String opponentName, int amount) {
