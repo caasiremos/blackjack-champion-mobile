@@ -53,12 +53,12 @@ public class WalletHistoryDialog implements WalletClient.Listener {
 
         Table header = new Table();
         Table titles = new Table();
-        titles.add(GameText.title(assetStore, "CASH WALLET")).left().row();
+        titles.add(GameText.title(assetStore, "POINTS")).left().row();
         titles.add(balanceLabel).left().row();
         titles.add(heldLabel).left().row();
         header.add(titles).expandX().left();
-        header.add(UiKit.button(assetStore, "DEPOSIT", UiKit.Style.PRIMARY, () -> WalletDialog.show(stage, assetStore, true))).width(260).height(90).padRight(20);
-        header.add(UiKit.button(assetStore, "WITHDRAW", UiKit.Style.SECONDARY, () -> WalletDialog.show(stage, assetStore, false))).width(260).height(90);
+        header.add(UiKit.button(assetStore, "TOP UP", UiKit.Style.PRIMARY, () -> WalletDialog.show(stage, assetStore, true))).width(260).height(90).padRight(20);
+        header.add(UiKit.button(assetStore, "REDEEM", UiKit.Style.SECONDARY, () -> WalletDialog.show(stage, assetStore, false))).width(260).height(90);
 
         list = new Table();
         list.top();
@@ -88,18 +88,18 @@ public class WalletHistoryDialog implements WalletClient.Listener {
 
     private void render() {
         balanceLabel.setText(wallet.isLoaded() ? wallet.money(wallet.getBalance()) : "");
-        heldLabel.setText(wallet.getReserved() > 0 ? wallet.money(wallet.getReserved()) + " on hold for withdrawals in progress" : "");
+        heldLabel.setText(wallet.getReserved() > 0 ? wallet.money(wallet.getReserved()) + " on hold for redemptions in progress" : "");
         updateConnection();
 
         float scrollY = scroll.getScrollY();
         list.clearChildren();
         if (!wallet.isLoaded()) {
-            list.add(muted(wallet.isConnected() ? "Loading your wallet..." : "You're offline.")).padTop(120);
+            list.add(muted(wallet.isConnected() ? "Loading your points..." : "You're offline.")).padTop(120);
             return;
         }
         if (wallet.getTransactions().isEmpty()) {
             list.add(GameText.label(assetStore.messageFont, "No transactions yet")).padTop(110).row();
-            list.add(muted("Deposit with mobile money to get started.")).padTop(10).row();
+            list.add(muted("Top up with mobile money to get started.")).padTop(10).row();
             return;
         }
 
@@ -120,7 +120,7 @@ public class WalletHistoryDialog implements WalletClient.Listener {
         row.setTouchable(Touchable.enabled);
 
         Table left = new Table();
-        left.add(GameText.label(assetStore.messageFont, transaction.isDeposit() ? "Deposit" : "Withdrawal")).left().row();
+        left.add(GameText.label(assetStore.messageFont, transaction.isDeposit() ? "Top-up" : "Redemption")).left().row();
         left.add(muted(transaction.createdText() + "  ·  " + transaction.phone + "  ·  Ref " + transaction.shortReference())).left();
 
         boolean success = WalletTransaction.SUCCESSFUL.equals(transaction.status);

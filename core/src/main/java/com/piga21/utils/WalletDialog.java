@@ -88,7 +88,7 @@ public class WalletDialog implements WalletClient.Listener {
 
     private void showForm(String error) {
         Table panel = newPanel();
-        String action = deposit ? "DEPOSIT" : "WITHDRAW";
+        String action = deposit ? "TOP UP" : "REDEEM";
 
         Label subtitle = muted("");
         TextField phoneField = UiKit.textField(assetStore, phone, "07xxxxxxxx");
@@ -122,7 +122,7 @@ public class WalletDialog implements WalletClient.Listener {
             if (!wallet.isConnected()) {
                 subtitle.setText("You're offline. Reconnecting...");
             } else if (!wallet.isLoaded()) {
-                subtitle.setText("Loading your wallet...");
+                subtitle.setText("Loading your points...");
             } else if (deposit) {
                 subtitle.setText("Add money from your mobile money account.");
             } else {
@@ -193,11 +193,11 @@ public class WalletDialog implements WalletClient.Listener {
         long amount = amount();
         long fee = deposit ? wallet.getDepositFee() : wallet.getWithdrawalFee();
 
-        panel.add(GameText.title(assetStore, deposit ? "CONFIRM DEPOSIT" : "CONFIRM WITHDRAWAL")).colspan(2).padBottom(26).row();
+        panel.add(GameText.title(assetStore, deposit ? "CONFIRM TOP UP" : "CONFIRM REDEEM")).colspan(2).padBottom(26).row();
         addRow(panel, deposit ? "From" : "To", WalletClient.formatPhone(phone));
         addRow(panel, "Amount", wallet.money(amount));
         addRow(panel, "Fee", fee == 0 ? "Free" : wallet.money(fee));
-        addRow(panel, deposit ? "You pay" : "Leaves your wallet", wallet.money(amount + fee));
+        addRow(panel, deposit ? "You pay" : "Taken from your points", wallet.money(amount + fee));
 
         Label note = muted(deposit
             ? "You'll get a mobile money prompt. Enter your PIN to approve."
@@ -243,7 +243,7 @@ public class WalletDialog implements WalletClient.Listener {
      */
     private void showSending() {
         Table panel = newPanel();
-        panel.add(GameText.title(assetStore, deposit ? "DEPOSIT" : "WITHDRAWAL")).padBottom(20).row();
+        panel.add(GameText.title(assetStore, deposit ? "TOP UP" : "REDEEM")).padBottom(20).row();
         panel.add(spinner()).size(120, 120).padBottom(20).row();
 
         if (!timedOut) {
@@ -275,7 +275,7 @@ public class WalletDialog implements WalletClient.Listener {
         Table panel = newPanel();
         boolean success = WalletTransaction.SUCCESSFUL.equals(transaction.status);
         boolean failed = WalletTransaction.FAILED.equals(transaction.status);
-        String kind = transaction.isDeposit() ? "DEPOSIT" : "WITHDRAWAL";
+        String kind = transaction.isDeposit() ? "TOP UP" : "REDEEM";
 
         Label title = GameText.title(assetStore, success ? kind + " SUCCESSFUL" : failed ? kind + " FAILED"
             : WalletTransaction.REVERSED.equals(transaction.status) ? kind + " REVERSED" : "PROCESSING");
@@ -294,7 +294,7 @@ public class WalletDialog implements WalletClient.Listener {
         addRow(panel, "Date", transaction.createdText());
         addRow(panel, "Reference", transaction.reference);
 
-        Label balance = muted("Wallet balance: " + wallet.money(wallet.getBalance())
+        Label balance = muted("Points balance: " + wallet.money(wallet.getBalance())
             + (wallet.getReserved() > 0 ? "  ·  " + wallet.money(wallet.getReserved()) + " on hold" : ""));
         panel.add(balance).colspan(2).padTop(16).row();
 
@@ -335,7 +335,7 @@ public class WalletDialog implements WalletClient.Listener {
         String money = wallet.money(transaction.amount);
         switch (transaction.status) {
             case WalletTransaction.SUCCESSFUL:
-                return transaction.isDeposit() ? money + " has been added to your wallet." : money + " has been sent to " + transaction.phone + ".";
+                return transaction.isDeposit() ? money + " has been added to your points." : money + " has been sent to " + transaction.phone + ".";
             case WalletTransaction.FAILED:
                 return transaction.failureMessage != null ? transaction.failureMessage : "The transaction did not go through.";
             case WalletTransaction.REVERSED:
@@ -445,11 +445,11 @@ public class WalletDialog implements WalletClient.Listener {
         if (amount < wallet.getMinAmount()) return "The minimum is " + wallet.money(wallet.getMinAmount());
         if (amount > wallet.getMaxAmount()) return "The maximum is " + wallet.money(wallet.getMaxAmount());
         if (!deposit) {
-            if (!wallet.areWithdrawalsEnabled()) return "Withdrawals are disabled for your account";
+            if (!wallet.areWithdrawalsEnabled()) return "Redeeming is disabled for your account";
             // Until the wallet has loaded the balance is unknown; the server checks it
             if (!wallet.isLoaded()) return null;
             long total = amount + wallet.getWithdrawalFee();
-            if (total > wallet.getBalance()) return "Not enough in your wallet (" + wallet.money(wallet.getBalance()) + " available)";
+            if (total > wallet.getBalance()) return "Not enough points (" + wallet.money(wallet.getBalance()) + " available)";
         }
         return null;
     }
@@ -457,7 +457,7 @@ public class WalletDialog implements WalletClient.Listener {
     private String feeSummary(long amount) {
         long fee = deposit ? wallet.getDepositFee() : wallet.getWithdrawalFee();
         if (fee == 0) return "No fee";
-        return "Fee " + wallet.money(fee) + "  ·  " + (deposit ? "You pay " : "Leaves your wallet ") + wallet.money(amount + fee);
+        return "Fee " + wallet.money(fee) + "  ·  " + (deposit ? "You pay " : "Taken from your points ") + wallet.money(amount + fee);
     }
 
     private void addRow(Table table, String name, String value) {

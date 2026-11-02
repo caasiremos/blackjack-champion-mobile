@@ -100,9 +100,9 @@ public class GameSettingScreen implements Screen, BackHandler {
 
         // Button layout
         Table buttonTable = new Table();
-        TextButton depositButton = UiKit.button(assetStore, "DEPOSIT", UiKit.Style.PRIMARY,
+        TextButton depositButton = UiKit.button(assetStore, "TOP UP", UiKit.Style.PRIMARY,
             () -> WalletDialog.show(stage, assetStore, true));
-        TextButton withdrawButton = UiKit.button(assetStore, "WITHDRAW", UiKit.Style.SECONDARY,
+        TextButton withdrawButton = UiKit.button(assetStore, "REDEEM", UiKit.Style.SECONDARY,
             () -> WalletDialog.show(stage, assetStore, false));
         buttonTable.add(depositButton).expandX().left().padLeft(30).width(450).height(150);
         buttonTable.add().expandX(); // Spacer
@@ -148,7 +148,7 @@ public class GameSettingScreen implements Screen, BackHandler {
             public void onTransactionUpdated(WalletTransaction transaction) {
                 // Finished while the player wasn't watching it
                 if (transaction.isFinished() && !WalletDialog.isShowing(transaction.reference)) {
-                    String kind = transaction.isDeposit() ? "Deposit" : "Withdrawal";
+                    String kind = transaction.isDeposit() ? "Top-up" : "Redemption";
                     commonUtilInterface.showToast(kind + " of " + WalletClient.get().money(transaction.amount) + " "
                         + transaction.statusText().toLowerCase());
                 }
@@ -159,7 +159,7 @@ public class GameSettingScreen implements Screen, BackHandler {
 
     private String walletText() {
         WalletClient wallet = WalletClient.get();
-        return "WALLET  " + (wallet.isLoaded() ? wallet.money(wallet.getBalance()) : "UGX --");
+        return "POINTS  " + (wallet.isLoaded() ? wallet.money(wallet.getBalance()) : "UGX --");
     }
 
     private void listenToServer() {
