@@ -87,7 +87,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         dividerTR = assetStore.otherComponents.findRegion("divider");
 
 
-        Image backgroundImage = assetStore.blueBackground();
+        Image backgroundImage = assetStore.redBackground();
         backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
         backgroundImage.setPosition(0, 0);
 

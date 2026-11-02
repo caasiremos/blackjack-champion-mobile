@@ -424,7 +424,7 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
                     // Extract the access token
                     String token = dataObject.getString("access_token");
                     String tokenType = dataObject.getString("token_type");
-                    Log.d(TAG, "Extracted token: " + token);
+                    Log.d(TAG, "Signed in to the server");
 
                     // Extract player data
                     JSONObject playerObject = dataObject.getJSONObject("player");

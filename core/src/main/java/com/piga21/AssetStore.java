@@ -27,7 +27,7 @@ public class AssetStore {
     private static final String TEXT_FONT = "fonts/Fredoka-SemiBold.ttf";
     private static final Color OUTLINE_COLOR = Color.valueOf("#2A1600");
     private static final Color SHADOW_COLOR = new Color(0f, 0f, 0f, 0.45f);
-    private static final Color TITLE_OUTLINE_COLOR = new Color(0.05f, 0.05f, 0.12f, 0.9f);
+    private static final Color TITLE_OUTLINE_COLOR = new Color(0.12f, 0.03f, 0.03f, 0.9f);
 
     public BitmapFont font, dialogFont, counterFont, blackJackFont, dialogCounterFont, betAmountDialogFont, listFont;
     // Text that used to be painted into images: titles, ribbons, chip names, messages
@@ -58,7 +58,7 @@ public class AssetStore {
         redAtlas = new TextureAtlas("cards/red_cards_atlas.txt");
         blackAtlas = new TextureAtlas("cards/black_cards_atlas.txt");
         otherComponents = new TextureAtlas("other_components.txt");
-        backgroundComponents = loadBlueTheme();
+        backgroundComponents = loadRedTheme();
         components = loadRandomTheme(components);
 
         //load fonts: each file is read once and released after the sizes are generated
@@ -153,12 +153,12 @@ public class AssetStore {
         return new TextureAtlas(selectedThemePath);
     }
 
-    private TextureAtlas loadBlueTheme(){
-        return new TextureAtlas("themes/theme_blue.txt");
+    private TextureAtlas loadRedTheme(){
+        return new TextureAtlas("themes/theme_red.txt");
     }
 
-    public Image blueBackground() {
-        Texture texture = new Texture(Gdx.files.internal("themes/blue_background.png"));
+    public Image redBackground() {
+        Texture texture = new Texture(Gdx.files.internal("themes/red_background.png"));
         return new Image(texture);
     }
 }

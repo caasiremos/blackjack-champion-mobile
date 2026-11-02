@@ -85,7 +85,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         bossChipImage = chipBadges.get("boss").coin;
         legendChipImage = chipBadges.get("legend").coin;
         royalChipImage = chipBadges.get("royal").coin;
-        backgroundImage = assetStore.blueBackground();
+        backgroundImage = assetStore.redBackground();
 
         // Set background full screen
         backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());

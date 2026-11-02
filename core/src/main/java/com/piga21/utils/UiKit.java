@@ -20,23 +20,23 @@ import com.piga21.AssetStore;
 
 /**
  * Shared look for dialogs, buttons, text fields and list cards, drawn from code so every
- * screen matches: navy panels with a gold border, gold primary buttons with dark red text
- * (like the button art), navy outlined secondary buttons.
+ * screen matches: maroon panels with a gold border, gold primary buttons with dark red text
+ * (like the button art), maroon outlined secondary buttons.
  */
 public class UiKit {
     public enum Style { PRIMARY, SECONDARY, SMALL }
 
     public static final Color GOLD = Color.valueOf("#F4B331");
     public static final Color GOLD_DARK = Color.valueOf("#D08A12");
-    public static final Color NAVY = Color.valueOf("#141C55");
+    public static final Color MAROON = Color.valueOf("#550A0A");
     public static final Color BUTTON_TEXT = Color.valueOf("#7A1600");
     public static final Color ERROR = Color.valueOf("#FF6B5E");
-    public static final Color MUTED = Color.valueOf("#B8C4FF");
+    public static final Color MUTED = Color.valueOf("#FFC9C0");
 
     private static final Map<String, NinePatchDrawable> cache = new HashMap<>();
 
     public static Drawable panel() {
-        return padded(rounded("panel", new Color(0.078f, 0.11f, 0.33f, 0.97f), GOLD, 32, 4), 50, 40);
+        return padded(rounded("panel", new Color(0.33f, 0.04f, 0.04f, 0.97f), GOLD, 32, 4), 50, 40);
     }
 
     public static Drawable card() {
@@ -62,14 +62,14 @@ public class UiKit {
                 buttonStyle.disabledFontColor = Color.valueOf("#4A3A20");
             }
             case SECONDARY -> {
-                buttonStyle.up = padded(rounded("secondary", NAVY, GOLD, 24, 4), 40, 14);
-                buttonStyle.down = padded(rounded("secondaryDown", Color.valueOf("#26307A"), GOLD, 24, 4), 40, 14);
+                buttonStyle.up = padded(rounded("secondary", MAROON, GOLD, 24, 4), 40, 14);
+                buttonStyle.down = padded(rounded("secondaryDown", Color.valueOf("#7A1A1A"), GOLD, 24, 4), 40, 14);
                 buttonStyle.font = assetStore.buttonFont;
                 buttonStyle.fontColor = GOLD;
             }
             case SMALL -> {
-                buttonStyle.up = padded(rounded("small", new Color(0.078f, 0.11f, 0.33f, 0.9f), GOLD, 18, 3), 22, 8);
-                buttonStyle.down = padded(rounded("smallDown", Color.valueOf("#26307A"), GOLD, 18, 3), 22, 8);
+                buttonStyle.up = padded(rounded("small", new Color(0.33f, 0.04f, 0.04f, 0.9f), GOLD, 18, 3), 22, 8);
+                buttonStyle.down = padded(rounded("smallDown", Color.valueOf("#7A1A1A"), GOLD, 18, 3), 22, 8);
                 buttonStyle.font = assetStore.smallButtonFont;
                 buttonStyle.fontColor = GOLD;
             }
@@ -95,9 +95,9 @@ public class UiKit {
     public static TextField textField(AssetStore assetStore, String text, String placeholder) {
         TextField.TextFieldStyle style = new TextField.TextFieldStyle();
         style.font = assetStore.inputFont;
-        style.fontColor = Color.valueOf("#1A1A2E");
+        style.fontColor = Color.valueOf("#2E1A1A");
         style.messageFont = assetStore.inputFont;
-        style.messageFontColor = Color.valueOf("#8A8FA8");
+        style.messageFontColor = Color.valueOf("#A88A8A");
         style.background = padded(rounded("field", Color.WHITE, GOLD, 20, 4), 28, 18);
         style.focusedBackground = padded(rounded("fieldFocused", Color.WHITE, Color.valueOf("#FFD36B"), 20, 5), 28, 18);
         NinePatchDrawable cursor = rounded("cursor", GOLD_DARK, null, 2, 0);

@@ -20,7 +20,7 @@ import com.piga21.AssetStore;
  * includes an email (the server doesn't send it) and offers a challenge instead.
  */
 public class ProfileDialog {
-    private static final Color LABEL_COLOR = Color.valueOf("#B8C4FF");
+    private static final Color LABEL_COLOR = Color.valueOf("#FFC9C0");
     private static final Color LINK_COLOR = Color.valueOf("#F4B331");
 
     /**
