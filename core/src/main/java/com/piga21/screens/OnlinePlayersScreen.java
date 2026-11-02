@@ -118,7 +118,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         centre.add(new ChipBadge(assetStore, ChipBadge.selectedKey(), 300)).row();
         centre.add(balanceLabel).padTop(28).row();
         centre.add(muted("chips to play with")).row();
-        Label hint = muted("Tap PLAY to challenge,\ntap a player for their profile");
+        Label hint = muted("Tap a player to challenge them,\ntap the leaderboard for profiles");
         hint.setAlignment(Align.center);
         centre.add(hint).padTop(40);
 
@@ -439,24 +439,23 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
             Label nameLabel = GameText.label(assetStore.messageFont, displayName);
             nameLabel.setEllipsis(true);
-            Label stakeLabel = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Plays for %,d chips", betAmount));
-            stakeLabel.setColor(UiKit.MUTED);
-            Table names = new Table();
-            names.add(nameLabel).left().expandX().fillX().minWidth(0).row();
-            names.add(stakeLabel).left();
 
-            // Just the coin: its painted name would be unreadable at this size
-            Image chip = new Image(ChipBadge.coinRegion(assetStore, ChipBadge.keyForAmount(betAmount)));
+            // Their chosen stake, on the right
+            Label stakeAmount = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", betAmount));
+            stakeAmount.setColor(UiKit.GOLD);
+            Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "STAKE");
+            stakeCaption.setColor(UiKit.MUTED);
+            Table stake = new Table();
+            stake.add(stakeAmount).right().row();
+            stake.add(stakeCaption).right();
 
-            // The row opens their profile; PLAY (which doesn't pass its tap on) challenges them
+            // Tapping the row challenges them
             Table row = new Table();
             row.setBackground(UiKit.card());
             row.add(UiKit.initialBadge(assetStore, displayName)).size(72, 72).padRight(18);
-            row.add(names).left().expandX().fillX().minWidth(0);
-            row.add(chip).size(74, 60).padLeft(10).padRight(14);
-            row.add(UiKit.button(assetStore, "PLAY", UiKit.Style.PRIMARY, () -> initiateGameRequest(playerId, displayName)))
-                .width(150).height(76);
-            tappable(row, () -> requestPlayerProfile(playerId));
+            row.add(nameLabel).left().expandX().fillX().minWidth(0);
+            row.add(stake).right().padLeft(16).padRight(8);
+            tappable(row, () -> initiateGameRequest(playerId, displayName));
 
             // Fade in players who just came online
             if (!knownPlayers.containsKey(displayName)) {
