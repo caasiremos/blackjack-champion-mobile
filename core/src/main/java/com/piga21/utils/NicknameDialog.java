@@ -13,8 +13,9 @@ import java.util.function.Consumer;
 import com.piga21.AssetStore;
 
 /**
- * In-game nickname editor: a text field with live checks and Save / Cancel. It sits in the
- * top half of the screen because the on-screen keyboard covers the bottom half in landscape.
+ * In-game nickname editor: a text field with live checks and Save / Cancel beside it. It sits
+ * at the top of the screen, in one row, because the on-screen keyboard covers most of the
+ * screen in landscape. Saving it empty clears the nickname so the player's name shows again.
  */
 public class NicknameDialog {
     private static final int MIN_LENGTH = 2;
@@ -22,10 +23,11 @@ public class NicknameDialog {
     private static final String ALLOWED_SYMBOLS = " ._-";
 
     /**
+     * @param name     the player's own name, shown when they have no nickname
      * @param onSaved  gets the updated profile from the server
      * @param onCancel called when the player backs out
      */
-    public static void show(Stage stage, AssetStore assetStore, String current,
+    public static void show(Stage stage, AssetStore assetStore, String current, String name,
                             Consumer<JsonObject> onSaved, Runnable onCancel) {
         OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage, 0.85f);
 
@@ -82,7 +84,9 @@ public class NicknameDialog {
             String nickName = field.getText().trim();
             save[0].setDisabled(!isValid(nickName));
             hint.setColor(UiKit.MUTED);
-            if (nickName.length() < MIN_LENGTH) {
+            if (nickName.isEmpty()) {
+                hint.setText("Leave it empty to use your name" + (name == null || name.isEmpty() ? "" : ", " + name));
+            } else if (nickName.length() < MIN_LENGTH) {
                 hint.setText("At least " + MIN_LENGTH + " characters (letters, numbers, spaces, . _ -)");
             } else {
                 hint.setText(nickName.length() + " / " + MAX_LENGTH);
@@ -97,19 +101,16 @@ public class NicknameDialog {
         });
         refreshHint.run();
 
-        Table buttons = new Table();
-        buttons.add(cancel).width(300).height(100).padRight(40);
-        buttons.add(save[0]).width(300).height(100);
-
-        panel.add(title).padBottom(8).row();
-        panel.add(subtitle).padBottom(34).row();
-        panel.add(field).width(760).height(104).row();
-        panel.add(hint).left().padTop(12).padBottom(30).row();
-        panel.add(buttons).row();
+        // Buttons sit beside the field so the keyboard never covers them
+        panel.add(title).colspan(3).padBottom(4).row();
+        panel.add(subtitle).colspan(3).padBottom(22).row();
+        panel.add(field).width(720).height(100).padRight(24);
+        panel.add(cancel).width(250).height(100).padRight(20);
+        panel.add(save[0]).width(250).height(100).row();
+        panel.add(hint).colspan(3).left().padTop(10).row();
         panel.pack();
 
-        // Top half: the keyboard takes the bottom half in landscape
-        panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() - panel.getHeight() - 50);
+        panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() - panel.getHeight() - 20);
         overlay.addActor(panel);
         CommonGameFunctions.showOverlay();
 
@@ -118,7 +119,10 @@ public class NicknameDialog {
         Gdx.input.setOnscreenKeyboardVisible(true);
     }
 
+    /**
+     * Empty is allowed: it clears the nickname.
+     */
     private static boolean isValid(String nickName) {
-        return nickName.length() >= MIN_LENGTH && nickName.length() <= MAX_LENGTH;
+        return nickName.isEmpty() || (nickName.length() >= MIN_LENGTH && nickName.length() <= MAX_LENGTH);
     }
 }

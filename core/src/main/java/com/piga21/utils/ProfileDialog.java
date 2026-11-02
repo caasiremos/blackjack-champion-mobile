@@ -15,6 +15,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 
 import com.piga21.AssetStore;
 
@@ -34,6 +35,14 @@ public class ProfileDialog {
      */
     public static void show(Stage stage, AssetStore assetStore, CommonUtilInterface ui, JsonObject player,
                             boolean own, String status, Runnable onChallenge) {
+        show(stage, assetStore, ui, player, own, status, onChallenge, null);
+    }
+
+    /**
+     * @param onUpdated gets the player's profile after they change their nickname; may be null
+     */
+    public static void show(Stage stage, AssetStore assetStore, CommonUtilInterface ui, JsonObject player,
+                            boolean own, String status, Runnable onChallenge, Consumer<JsonObject> onUpdated) {
         OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage, 0.85f);
 
         Table table = new Table();
@@ -48,7 +57,8 @@ public class ProfileDialog {
         }
 
         addRow(table, assetStore, "Name", text(player, "full_name", "-"));
-        addRow(table, assetStore, "Nickname", text(player, "nick_name", "Not set"));
+        // No nickname means other players see the name, so show that
+        addRow(table, assetStore, "Nickname", displayName(player));
         if (own) {
             addRow(table, assetStore, "Email", text(player, "email", "-"));
             addRow(table, assetStore, "Chips", count(player, "balance"));
@@ -62,12 +72,14 @@ public class ProfileDialog {
 
         if (own) {
             TextButton change = UiKit.button(assetStore, "CHANGE NICKNAME", UiKit.Style.SECONDARY, () ->
-                NicknameDialog.show(stage, assetStore, text(player, "nick_name", ""),
+                NicknameDialog.show(stage, assetStore, text(player, "nick_name", ""), text(player, "full_name", ""),
                     updated -> {
-                        ui.showToast("Nickname saved");
-                        show(stage, assetStore, ui, updated, true, null, null);
+                        String nick = text(updated, "nick_name", "");
+                        ui.showToast(nick.isEmpty() ? "Nickname cleared, your name is shown" : "Nickname saved");
+                        if (onUpdated != null) onUpdated.accept(updated);
+                        show(stage, assetStore, ui, updated, true, null, null, onUpdated);
                     },
-                    () -> show(stage, assetStore, ui, player, true, null, null)));
+                    () -> show(stage, assetStore, ui, player, true, null, null, onUpdated)));
             table.add(change).height(96).padTop(34).colspan(2).row();
         } else if (onChallenge != null) {
             TextButton challenge = UiKit.button(assetStore, "CHALLENGE", UiKit.Style.PRIMARY, () -> {

@@ -305,7 +305,7 @@ public class GameSettingScreen implements Screen, BackHandler {
             @Override
             public void onSuccess(JsonObject player) {
                 showPlayer(player);
-                ProfileDialog.show(stage, assetStore, commonUtilInterface, player, true, null, null);
+                ProfileDialog.show(stage, assetStore, commonUtilInterface, player, true, null, null, GameSettingScreen.this::showPlayer);
             }
 
             @Override
