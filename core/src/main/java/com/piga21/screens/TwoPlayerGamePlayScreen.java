@@ -51,13 +51,14 @@ import com.piga21.utils.OverlayContainer;
 import com.piga21.utils.PlayerApi;
 import com.piga21.utils.Settings;
 import com.piga21.utils.UiKit;
+import com.piga21.wallet.WalletClient;
 import com.piga21.utils.Util;
 
 /**
  * Two-player (online) blackjack. The server owns the game: this screen sends the player's
  * actions and draws whatever state the server sends back, from this player's point of view.
  * Players can only hit or stand. The one who busts loses; if both stand the higher hand
- * wins, and equal hands are a draw where no chips change hands.
+ * wins, and equal hands are a draw where no points change hands.
  */
 public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private static final String HIDDEN_CARD = "HIDDEN";
@@ -340,6 +341,11 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     }
 
     private void handleServerMessage(String raw, JsonObject message) {
+        // Points change when the game takes or pays the stake
+        if (WalletClient.get().handle(message)) {
+            if (pointsLabel != null) pointsLabel.setText(balanceText());
+            return;
+        }
         if (message.has("status") && "error".equals(message.get("status").getAsString())) {
             awaitingServer = false;
             if (gameView != null) updateButtons();
@@ -353,9 +359,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
         String action = message.has("action") ? message.get("action").getAsString() : "";
         PlayerApi.applyPlayerUpdate(message);
-        if ("balance_updated".equals(action) && pointsLabel != null) {
-            pointsLabel.setText(balanceText());
-        }
         if (gameOver && handleRematchMessage(action, raw, message)) {
             return;
         }
@@ -551,7 +554,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         panel.add(GameText.label(assetStore.messageFont, "Game sounds")).left().width(420).padBottom(24);
         panel.add(sound[0]).width(190).height(76).right().padBottom(24).row();
 
-        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d chips)", currentStake()));
+        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d points)", currentStake()));
         leaveHint.setColor(UiKit.MUTED);
         TextButton[] leave = new TextButton[1];
         leave[0] = UiKit.button(assetStore, "LEAVE TABLE", UiKit.Style.SECONDARY, () -> {
@@ -611,7 +614,8 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     }
 
     private String balanceText() {
-        return String.format(Locale.US, "Balance  %,d chips", gamePoint.getPoints());
+        WalletClient wallet = WalletClient.get();
+        return wallet.isLoaded() ? "Balance  " + wallet.money(wallet.getBalance()) : "";
     }
 
     public void showGameOver(JsonObject result) {
@@ -621,7 +625,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         boolean push = "push".equals(outcome);
         boolean blackjack = won && "blackjack".equals(result.get("reason").getAsString());
 
-        // Chips are settled on the server; "balance_updated" brings the new total
+        // Points are settled on the server; a "wallet_summary" brings the new total
         if (won) {
             playSound(blackjack ? assetStore.blackJack : assetStore.win);
         }
@@ -645,9 +649,9 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         panel.add(vs).pad(0, 36, 0, 36);
         panel.add(finalHand("You", result.get("my_score").getAsInt(), gameView.getAsJsonArray("my_cards"), won)).row();
 
-        // Chips won or lost, and the new balance
-        Label chipsLabel = GameText.label(assetStore.titleFont, chips == 0 ? "No chips change hands"
-            : String.format(Locale.US, "%s%,d chips", chips > 0 ? "+" : "-", Math.abs(chips)));
+        // Points won or lost, and the new balance
+        Label chipsLabel = GameText.label(assetStore.titleFont, chips == 0 ? "Both stakes are returned"
+            : String.format(Locale.US, "%s%,d points", chips > 0 ? "+" : "-", Math.abs(chips)));
         chipsLabel.setColor(chips > 0 ? WIN_COLOR : chips < 0 ? LOW_TIME_TINT : Color.WHITE);
         panel.add(chipsLabel).colspan(3).padTop(26).row();
         pointsLabel = GameText.label(assetStore.listFont, balanceText());
@@ -809,9 +813,9 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         } else if (awaitingRematch) {
             text = "Waiting for " + opponentName + "...  " + (int) Math.ceil(rematchSecondsLeft) + "s";
         } else if (incomingRematchId != null) {
-            text = opponentName + " wants a rematch for " + stake + " chips!";
+            text = opponentName + " wants a rematch for " + stake + " points!";
         } else {
-            text = "Rematch asks " + opponentName + " to play again for " + stake + " chips";
+            text = "Rematch asks " + opponentName + " to play again for " + stake + " points";
         }
         rematchStatusLabel.setText(text);
     }

@@ -139,7 +139,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         bar.setBackground(UiKit.bar());
         bar.pad(0, 44, 0, 44);
 
-        // Profile: the player's initial in a gold badge, their name, and rank and chips underneath
+        // Profile: the player's initial in a gold badge, their name, and their rank underneath
         Stack badge = new Stack();
         badge.add(new Image(UiKit.circle("avatarBadge", UiKit.GOLD, UiKit.GOLD_DARK, 46, 5)));
         initialLabel = GameText.label(assetStore.buttonFont, "?");
@@ -179,7 +179,7 @@ public class GameSettingScreen implements Screen, BackHandler {
     private Table buildHeading() {
         Table heading = new Table();
         heading.add(GameText.title(assetStore, "CHOOSE YOUR STAKE")).row();
-        Label hint = GameText.label(assetStore.messageFont, "Pick a chip, then challenge a player online");
+        Label hint = GameText.label(assetStore.messageFont, "Pick the least you'll play for, then challenge a player");
         hint.setColor(UiKit.MUTED);
         heading.add(hint).padTop(6);
         return heading;
@@ -279,13 +279,10 @@ public class GameSettingScreen implements Screen, BackHandler {
     }
 
     /**
-     * Fills the profile in the top bar; null shows what's known locally (chips) until the
-     * server sends the player.
+     * Fills the profile in the top bar; null leaves it as it is until the server sends the player.
      */
     private void showPlayer(JsonObject player) {
-        int chips = new GamePoint().getPoints();
         if (player == null) {
-            detailLabel.setText(String.format(Locale.US, "%,d chips", chips));
             return;
         }
 
@@ -293,11 +290,8 @@ public class GameSettingScreen implements Screen, BackHandler {
         nameLabel.setText(name);
         initialLabel.setText(name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(Locale.US));
 
-        if (player.has("balance") && !player.get("balance").isJsonNull()) {
-            chips = player.get("balance").getAsInt();
-        }
         String rank = player.has("rank") && !player.get("rank").isJsonNull() ? "Rank #" + player.get("rank").getAsInt() : "Unranked";
-        detailLabel.setText(String.format(Locale.US, "%s  ·  %,d chips", rank, chips));
+        detailLabel.setText(rank);
     }
 
     private void showMyProfile() {
@@ -332,12 +326,20 @@ public class GameSettingScreen implements Screen, BackHandler {
     // ---- Stakes ----
 
     private void pickStake(String chipName) {
+        // A stake is paid in points, so it can't be more than you have
+        int amount = ChipBadge.amountOf(chipName);
+        WalletClient wallet = WalletClient.get();
+        if (wallet.isLoaded() && wallet.getBalance() < amount) {
+            commonUtilInterface.showToast(String.format(Locale.US, "You need %,d points to stake %,d. Top up to play.", amount, amount));
+            return;
+        }
+
         Preferences prefs = Gdx.app.getPreferences(GamePoint.GAME_PREFS);
         prefs.putString("selected_chip", chipName);
         prefs.flush();
 
         highlightSelectedChip();
-        setBetAmount(ChipBadge.amountOf(chipName));
+        setBetAmount(amount);
 
         ((Piga21Game) game).pushScreen(new OnlinePlayersScreen(
             game, assetStore, extendViewport, webSocketHandler, commonUtilInterface
@@ -506,7 +508,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         panel.add(GameText.title(assetStore, "CHALLENGE!")).colspan(2).row();
 
         Label message = GameText.label(assetStore.messageFont,
-            fromName + " wants to play you for " + String.format(Locale.US, "%,d", amount) + " chips");
+            fromName + " wants to play you for " + String.format(Locale.US, "%,d", amount) + " points");
         panel.add(message).colspan(2).padTop(14).row();
 
         timeCountLabel = GameText.label(assetStore.heroFont, "5");

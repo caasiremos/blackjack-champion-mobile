@@ -31,7 +31,6 @@ import java.util.Map;
 import com.piga21.AssetStore;
 import com.piga21.BackHandler;
 import com.piga21.Piga21Game;
-import com.piga21.points.GamePoint;
 import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.CommonGameFunctions;
 import com.piga21.utils.CommonUtilInterface;
@@ -42,6 +41,7 @@ import com.piga21.utils.PlayerApi;
 import com.piga21.utils.ProfileDialog;
 import com.piga21.utils.UiKit;
 import com.piga21.utils.Util;
+import com.piga21.wallet.WalletClient;
 
 /**
  * The lobby: who's online to challenge (left), your stake and chips (middle) and the
@@ -102,22 +102,24 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Table players = section("ONLINE NOW", onlineCountLabel, playersContent);
 
         // Leaderboard
-        Label leaderboardHint = GameText.label(assetStore.chipTaglineFont, "Chips won online");
+        Label leaderboardHint = GameText.label(assetStore.chipTaglineFont, "Points won online");
         leaderboardHint.setColor(UiKit.MUTED);
         leaderboardContent.top();
         leaderboardContent.add(muted("Loading...")).padTop(60);
         Table leaderboard = section("LEADERBOARD", leaderboardHint, leaderboardContent);
 
-        // Your stake and chips
+        // Your stake and points
         Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "Y O U R   S T A K E");
         stakeCaption.setColor(UiKit.MUTED);
-        balanceLabel = GameText.label(assetStore.buttonFont, chipsText());
+        balanceLabel = GameText.label(assetStore.buttonFont, pointsText());
         balanceLabel.setColor(UiKit.GOLD);
         Table centre = new Table();
         centre.add(stakeCaption).padBottom(14).row();
         centre.add(new ChipBadge(assetStore, ChipBadge.selectedKey(), 300)).row();
         centre.add(balanceLabel).padTop(28).row();
-        centre.add(muted("chips to play with")).row();
+        centre.add(muted("points to play with")).row();
+        Label minimum = muted(String.format(Locale.US, "Players challenge you for %,d or more", ChipBadge.amountOf(ChipBadge.selectedKey())));
+        centre.add(minimum).padTop(24).row();
         Label hint = muted("Tap a player to challenge them,\ntap the leaderboard for profiles");
         hint.setAlignment(Align.center);
         centre.add(hint).padTop(40);
@@ -201,8 +203,9 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         return label;
     }
 
-    private String chipsText() {
-        return String.format(Locale.US, "%,d", new GamePoint().getPoints());
+    private String pointsText() {
+        WalletClient wallet = WalletClient.get();
+        return wallet.isLoaded() ? String.format(Locale.US, "%,d", wallet.getBalance()) : "--";
     }
 
     /**
@@ -244,6 +247,11 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     private void handleServerMessage(String raw, JsonObject message) {
+        // Points change when a game takes or pays a stake
+        if (WalletClient.get().handle(message)) {
+            balanceLabel.setText(pointsText());
+            return;
+        }
         if (message.has("status") && "error".equals(message.get("status").getAsString())) {
             commonUtilInterface.showToast(message.get("message").getAsString());
             return;
@@ -251,7 +259,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
         String action = message.has("action") ? message.get("action").getAsString() : "";
         PlayerApi.applyPlayerUpdate(message);
-        balanceLabel.setText(chipsText());
 
         switch (action) {
             case "online_players" -> populatePlayersList(message.getAsJsonArray("players"));
@@ -263,7 +270,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
                 String fromName = message.has("from_name") ? message.get("from_name").getAsString() : "A player";
                 int amount = message.has("amount") ? message.get("amount").getAsInt() : 0;
                 boolean rematch = message.has("rematch") && message.get("rematch").getAsBoolean();
-                acceptGameRequestDialog(rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", "Stake: " + amount + " chips");
+                acceptGameRequestDialog(rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points", amount));
             }
             case "request_sent" -> {
                 outgoingRequestId = message.get("request_id").getAsString();
@@ -383,7 +390,8 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
         String status = inGame ? "In a game" : online ? "Online" : "Offline";
         // Only someone online and free can be challenged
-        Runnable challenge = online && !inGame ? () -> initiateGameRequest(playerId, ProfileDialog.displayName(player)) : null;
+        int stake = message.has("stake") ? message.get("stake").getAsInt() : ChipBadge.amountOf(ChipBadge.KEYS[0]);
+        Runnable challenge = online && !inGame ? () -> showStakePicker(playerId, ProfileDialog.displayName(player), stake) : null;
         ProfileDialog.show(stage, assetStore, commonUtilInterface, player, false, status, challenge);
     }
 
@@ -443,19 +451,19 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             // Their chosen stake, on the right
             Label stakeAmount = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", betAmount));
             stakeAmount.setColor(UiKit.GOLD);
-            Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "STAKE");
+            Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "OR MORE");
             stakeCaption.setColor(UiKit.MUTED);
             Table stake = new Table();
             stake.add(stakeAmount).right().row();
             stake.add(stakeCaption).right();
 
-            // Tapping the row challenges them
+            // Tapping the row picks a stake to challenge them for
             Table row = new Table();
             row.setBackground(UiKit.card());
             row.add(UiKit.initialBadge(assetStore, displayName)).size(72, 72).padRight(18);
             row.add(nameLabel).left().expandX().fillX().minWidth(0);
             row.add(stake).right().padLeft(16).padRight(8);
-            tappable(row, () -> initiateGameRequest(playerId, displayName));
+            tappable(row, () -> showStakePicker(playerId, displayName, betAmount));
 
             // Fade in players who just came online
             if (!knownPlayers.containsKey(displayName)) {
@@ -515,7 +523,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Label detailLabel = GameText.label(assetStore.messageFont, detail);
         detailLabel.setColor(UiKit.MUTED);
         panel.add(detailLabel).padBottom(20).row();
-        panel.add(timeCountLabel).padBottom(30).row();
+        if (timeCountLabel != null) panel.add(timeCountLabel).padBottom(30).row();
         panel.add(buttons).row();
         panel.pack();
         panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() / 2 - panel.getHeight() / 2);
@@ -531,6 +539,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         // Also re-claims the socket when coming back from a game
         listenToServer();
         requestLeaderboard();
+        WalletClient.get().refresh();
 
         // Check for internet connection
         if (!commonUtilInterface.isNetworkAvailable()) {
@@ -605,11 +614,47 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         });
     }
 
-    private void initiateGameRequest(int opponentId, String opponentName) {
+    /**
+     * The stakes a player can be challenged for: their own stake or more. Ones above our points are dimmed.
+     */
+    private void showStakePicker(int opponentId, String opponentName, int minimum) {
+        WalletClient wallet = WalletClient.get();
+        Table chips = new Table();
+        for (String key : ChipBadge.KEYS) {
+            int amount = ChipBadge.amountOf(key);
+            if (amount < minimum) continue;
+
+            boolean affordable = !wallet.isLoaded() || wallet.getBalance() >= amount;
+            ChipBadge badge = new ChipBadge(assetStore, key, 190);
+            if (!affordable) badge.getColor().a = 0.35f;
+            tappable(badge, () -> {
+                if (!affordable) {
+                    commonUtilInterface.showToast(String.format(Locale.US, "You need %,d points for this stake. Top up to play.", amount));
+                    return;
+                }
+                closeRequestDialog(null);
+                initiateGameRequest(opponentId, opponentName, amount);
+            });
+            chips.add(badge).pad(0, 14, 0, 14);
+        }
+
+        Table buttons = new Table();
+        buttons.add(UiKit.button(assetStore, "CANCEL", UiKit.Style.SECONDARY, () -> closeRequestDialog(null))).width(300).height(100);
+
+        timeCountLabel = null;
+        Table panel = new Table();
+        panel.add(chips).padBottom(36).row();
+        panel.add(buttons);
+        showRequestPanel("CHALLENGE " + opponentName.toUpperCase(Locale.US),
+            String.format(Locale.US, "Pick a stake. %s plays for %,d points or more.", opponentName, minimum), panel);
+    }
+
+    private void initiateGameRequest(int opponentId, String opponentName, int amount) {
         challengedName = opponentName;
         Map<String, Object> data = new HashMap<>();
         data.put("action", "request_game");
         data.put("opponent_id", opponentId);
+        data.put("amount", amount);
 
         // Use Gson instead of LibGDX Json
         String jsonString = new Gson().toJson(data);

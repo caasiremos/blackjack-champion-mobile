@@ -61,11 +61,10 @@ public class ProfileDialog {
         addRow(table, assetStore, "Nickname", displayName(player));
         if (own) {
             addRow(table, assetStore, "Email", text(player, "email", "-"));
-            addRow(table, assetStore, "Chips", count(player, "balance"));
         }
         addRow(table, assetStore, "Rank", player.has("rank") && !player.get("rank").isJsonNull()
             ? "#" + player.get("rank").getAsInt() : "Unranked");
-        addRow(table, assetStore, "Chips won", count(player, "total_points"));
+        addRow(table, assetStore, "Points won", count(player, "total_points"));
         addRow(table, assetStore, "Record", "Won " + text(player, "total_wins", "0")
             + "  ·  Lost " + text(player, "total_losses", "0")
             + "  ·  Tied " + text(player, "total_draws", "0"));
