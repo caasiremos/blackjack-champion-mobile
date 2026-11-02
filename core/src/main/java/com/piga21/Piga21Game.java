@@ -46,7 +46,8 @@ public class Piga21Game extends Game {
         orthographicCamera = new OrthographicCamera();
         extendViewport = new ExtendViewport(1920, 1080, orthographicCamera);
         assetStore = new AssetStore();
-        assetStore.loadAssets();
+        // Just enough to draw the splash; it loads the rest while it shows
+        assetStore.loadSplashAssets();
         setScreen(new SplashScreen(this, assetStore, extendViewport, webSocketHandler, commonUtilInterface));
     }
 

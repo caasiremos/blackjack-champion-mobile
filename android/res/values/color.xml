@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_background_color">#F5A623FF</color>
+    <!-- Behind the app while it starts, so launch goes from the icon straight to red, not black -->
+    <color name="splash_background">#5E0008</color>
 </resources>

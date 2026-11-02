@@ -1,0 +1,12 @@
+<resources>
+    <!-- Android 12+ shows the launcher icon while the app starts; give it the game's red -->
+    <style name="GdxTheme" parent="android:Theme">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+    </style>
+</resources>

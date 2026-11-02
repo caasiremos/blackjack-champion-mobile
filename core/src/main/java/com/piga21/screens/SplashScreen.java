@@ -29,11 +29,12 @@ import com.piga21.utils.PlayerApi;
 import com.piga21.utils.UiKit;
 
 /**
- * Shown at launch: an ace and a king fan out (21), the title and a loading bar fade in, and
- * once the player is signed in it moves on to the main menu.
+ * Shown at launch: an ace and a king fan out (21), the title and a loading bar fade in. The
+ * rest of the game's assets load meanwhile, and once they're in and the player is signed in
+ * (but not before two seconds) it moves on to the main menu.
  */
 public class SplashScreen implements Screen {
-    private static final float SPLASH_SECONDS = 2.5f;
+    private static final float SPLASH_SECONDS = 2f;
     private static final float CARD_WIDTH = 230, CARD_HEIGHT = 320;
     private static final float BAR_WIDTH = 520, BAR_HEIGHT = 8;
 
@@ -79,9 +80,9 @@ public class SplashScreen implements Screen {
         addCard(assetStore, Card.KING_HEART, centreX + 70, cardsY, -12f, 0.12f);
 
         // Title with the tagline between thin gold rules
-        Label title = GameText.label(assetStore.heroFont, "PIGA21");
+        Label title = GameText.label(assetStore.splashTitleFont, AssetStore.SPLASH_TITLE);
         title.setColor(UiKit.GOLD);
-        Label tagline = GameText.label(assetStore.chipTaglineFont, "B L A C K J A C K   ·   O N L I N E");
+        Label tagline = GameText.label(assetStore.splashTextFont, AssetStore.SPLASH_TEXTS[0]);
         tagline.setColor(UiKit.MUTED);
         Table taglineRow = new Table();
         taglineRow.add(new Image(UiKit.rule())).width(90).height(2).padRight(22);
@@ -103,7 +104,7 @@ public class SplashScreen implements Screen {
         barTrack.setBounds(centreX - BAR_WIDTH / 2, barY, BAR_WIDTH, BAR_HEIGHT);
         barFill = new Image(UiKit.circle("barFill", UiKit.GOLD, null, 4, 0));
         barFill.setBounds(barTrack.getX(), barY, BAR_HEIGHT, BAR_HEIGHT);
-        statusLabel = GameText.label(assetStore.chipTaglineFont, "Signing you in...");
+        statusLabel = GameText.label(assetStore.splashTextFont, AssetStore.SPLASH_TEXTS[1]);
         statusLabel.setColor(UiKit.MUTED);
         statusLabel.setAlignment(Align.center);
         statusLabel.setWidth(BAR_WIDTH);
@@ -158,7 +159,7 @@ public class SplashScreen implements Screen {
 
     private void requestSignIn() {
         signInRequested = true;
-        statusLabel.setText("Tap anywhere to sign in with Google");
+        statusLabel.setText(AssetStore.SPLASH_TEXTS[3]);
         commonUtilInterface.showToast("Sign in with Google to play online");
         ((Piga21Game) game).getAuthInterface().signIn();
     }
@@ -183,17 +184,20 @@ public class SplashScreen implements Screen {
         // The first frame's delta includes loading the game, which would skip the splash entirely
         delta = Math.min(delta, 1 / 30f);
 
-        // Fills over the splash time, then holds near the end while sign-in finishes
         elapsed += delta;
-        float progress = Math.min(1f, elapsed / SPLASH_SECONDS);
-        float filled = signInRequested ? 0.92f : Interpolation.smooth.apply(progress);
+        boolean assetsReady = assetStore.update();
+
+        // Fills with time, but never ahead of the real loading
+        float progress = Math.min(Interpolation.smooth.apply(Math.min(1f, elapsed / SPLASH_SECONDS)), assetStore.progress());
+        float filled = signInRequested ? Math.min(progress, 0.92f) : progress;
         barFill.setWidth(Math.max(BAR_HEIGHT, BAR_WIDTH * filled));
+        if (assetsReady && !signInRequested) statusLabel.setText(AssetStore.SPLASH_TEXTS[2]);
 
         stage.act(delta);
         stage.draw();
 
         // Sign-in finishes in the background, so keep checking until we can move on
-        if (!leaving && elapsed >= SPLASH_SECONDS) {
+        if (!leaving && assetsReady && elapsed >= SPLASH_SECONDS) {
             continueToLobby();
         }
     }
