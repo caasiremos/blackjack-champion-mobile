@@ -54,7 +54,6 @@ public class WalletClient {
 
     private boolean loaded;
     private long balance, reserved;
-    private String currency = "UGX";
     private boolean withdrawalsEnabled = true;
     private long minAmount = 1000, maxAmount = 5000000, depositFee, withdrawalFee, dailyWithdrawalLimit;
     private final List<WalletTransaction> transactions = new ArrayList<>();
@@ -252,7 +251,6 @@ public class WalletClient {
         if (wallet == null) return;
         balance = wallet.get("balance").getAsLong();
         reserved = wallet.get("reserved").getAsLong();
-        currency = textOf(wallet, "currency") != null ? textOf(wallet, "currency") : currency;
         withdrawalsEnabled = !wallet.has("withdrawals_enabled") || wallet.get("withdrawals_enabled").getAsBoolean();
     }
 
@@ -327,7 +325,7 @@ public class WalletClient {
     }
 
     public String money(long amount) {
-        return currency + " " + String.format(Locale.ENGLISH, "%,d", amount);
+        return String.format(Locale.ENGLISH, "%,d points", amount);
     }
 
     /* Phone numbers (display only; the server validates and picks the network) */

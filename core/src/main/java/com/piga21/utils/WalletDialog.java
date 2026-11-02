@@ -96,7 +96,7 @@ public class WalletDialog implements WalletClient.Listener {
         phoneField.setTextFieldFilter((textField, c) -> Character.isDigit(c));
         phoneField.setOnscreenKeyboard(visible -> Gdx.input.setOnscreenKeyboardVisible(visible, Input.OnscreenKeyboardType.PhonePad));
 
-        TextField amountField = UiKit.textField(assetStore, amountText, "Amount (UGX)");
+        TextField amountField = UiKit.textField(assetStore, amountText, "Amount (points)");
         amountField.setMaxLength(MAX_AMOUNT_DIGITS);
         amountField.setTextFieldFilter((textField, c) -> Character.isDigit(c));
         amountField.setOnscreenKeyboard(visible -> Gdx.input.setOnscreenKeyboardVisible(visible, Input.OnscreenKeyboardType.NumberPad));

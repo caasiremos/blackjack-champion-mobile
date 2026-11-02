@@ -275,7 +275,7 @@ public class GameSettingScreen implements Screen, BackHandler {
 
     private String pointsText() {
         WalletClient wallet = WalletClient.get();
-        return wallet.isLoaded() ? wallet.money(wallet.getBalance()) : "UGX --";
+        return wallet.isLoaded() ? wallet.money(wallet.getBalance()) : "-- points";
     }
 
     /**
