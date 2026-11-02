@@ -163,7 +163,7 @@ tasks.register('run', Exec) {
   }
 
   def adb = path + "/platform-tools/adb"
-  commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.piga21/com.piga21.android.AndroidLauncher'
+  commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.piga21/com.piga21.temsoft.AndroidLauncher'
 }
 
 eclipse.project.name = appName + "-android"

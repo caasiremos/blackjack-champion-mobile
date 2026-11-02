@@ -1,4 +1,4 @@
-package com.piga21.android;
+package com.piga21.temsoft;
 
 
 import static com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL;
