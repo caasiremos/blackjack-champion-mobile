@@ -102,7 +102,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Table players = section("ONLINE NOW", onlineCountLabel, playersContent);
 
         // Leaderboard
-        Label leaderboardHint = GameText.label(assetStore.chipTaglineFont, "Points won online");
+        Label leaderboardHint = GameText.label(assetStore.chipTaglineFont, "Wins this week");
         leaderboardHint.setColor(UiKit.MUTED);
         leaderboardContent.top();
         leaderboardContent.add(muted("Loading...")).padTop(60);
@@ -258,7 +258,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         }
 
         String action = message.has("action") ? message.get("action").getAsString() : "";
-        PlayerApi.applyPlayerUpdate(message);
 
         switch (action) {
             case "online_players" -> populatePlayersList(message.getAsJsonArray("players"));
@@ -288,7 +287,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     /**
-     * Server-ranked board: chips won against other players, ties broken by wins.
+     * Server-ranked board: games won this week, ties going to whoever got there first.
      * If you're not in the top list, your own rank is shown underneath.
      */
     private void populateLeaderboard(JsonArray players, JsonObject me) {
@@ -297,7 +296,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         boolean meListed = false;
 
         if (players.isEmpty()) {
-            leaderboardContent.add(muted("No games played yet")).padTop(60).row();
+            leaderboardContent.add(muted("No wins yet this week")).padTop(60).row();
         }
 
         for (int i = 0; i < players.size(); i++) {
@@ -334,7 +333,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Label nameLabel = GameText.label(assetStore.messageFont, isMe ? name + "  (you)" : name);
         nameLabel.setEllipsis(true);
         if (isMe) nameLabel.setColor(UiKit.GOLD);
-        Label scoreLabel = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", player.get("total_points").getAsInt()));
+        Label scoreLabel = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", player.has("week_wins") ? player.get("week_wins").getAsInt() : 0));
         scoreLabel.setColor(UiKit.GOLD);
 
         Table row = new Table();

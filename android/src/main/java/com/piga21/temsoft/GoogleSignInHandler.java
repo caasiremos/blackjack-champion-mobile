@@ -436,8 +436,6 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
                     editor.putString(GamePoint.API_TOKEN, token);
                     editor.putInt(Constants.PLAYER_ID, playerId);
                     editor.putString(Constants.PLAYER_NAME, playerName);
-                    // Chips come from the server; the local value is just a copy
-                    editor.putInt(GamePoint.GAME_POINTS, playerObject.getInt("balance"));
                     editor.apply();
 
                     Log.d(TAG, "Player data extracted - ID: " + playerId + ", Name: " + playerName);

@@ -290,7 +290,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         nameLabel.setText(name);
         initialLabel.setText(name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(Locale.US));
 
-        String rank = player.has("rank") && !player.get("rank").isJsonNull() ? "Rank #" + player.get("rank").getAsInt() : "Unranked";
+        String rank = player.has("rank") && !player.get("rank").isJsonNull() ? "Rank #" + player.get("rank").getAsInt() + " this week" : "No wins this week";
         detailLabel.setText(rank);
     }
 
@@ -381,7 +381,6 @@ public class GameSettingScreen implements Screen, BackHandler {
                         String action = jsonObject.has("action") ? jsonObject.get("action").getAsString() : "";
                         // Wallet messages (including wallet errors) are handled and shown by the wallet UI
                         if (WalletClient.get().handle(jsonObject)) return;
-                        PlayerApi.applyPlayerUpdate(jsonObject);
                         boolean aboutMe = "authenticated".equals(action) || "balance_updated".equals(action) || "profile".equals(action);
                         if (aboutMe && jsonObject.has("player") && jsonObject.get("player").isJsonObject()) {
                             showPlayer(jsonObject.getAsJsonObject("player"));

@@ -25,7 +25,6 @@ import com.piga21.cards.Card;
 import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.CommonUtilInterface;
 import com.piga21.utils.GameText;
-import com.piga21.utils.PlayerApi;
 import com.piga21.utils.UiKit;
 
 /**
@@ -172,9 +171,6 @@ public class SplashScreen implements Screen {
         if (!commonUtilInterface.isNetworkAvailable()) {
             commonUtilInterface.showToast("You are offline");
         }
-
-        // Chips live on the server: send any rounds played offline, then refresh the local copy
-        PlayerApi.syncBalance(null);
     }
 
     @Override

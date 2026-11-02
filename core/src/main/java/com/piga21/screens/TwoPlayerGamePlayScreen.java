@@ -41,14 +41,12 @@ import com.piga21.AssetStore;
 import com.piga21.BackHandler;
 import com.piga21.Piga21Game;
 import com.piga21.cards.Card;
-import com.piga21.points.GamePoint;
 import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.ChipBadge;
 import com.piga21.utils.CommonGameFunctions;
 import com.piga21.utils.CommonUtilInterface;
 import com.piga21.utils.GameText;
 import com.piga21.utils.OverlayContainer;
-import com.piga21.utils.PlayerApi;
 import com.piga21.utils.Settings;
 import com.piga21.utils.UiKit;
 import com.piga21.wallet.WalletClient;
@@ -77,7 +75,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     public CommonUtilInterface commonUtilInterface;
     AssetStore assetStore;
     public Stage stage;
-    public GamePoint gamePoint;
 
     private TextureRegion deckTR;
     private Image deckImage;
@@ -128,7 +125,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         this.commonUtilInterface = commonUtilInterface;
         stage = new Stage(extendViewport);
         Gdx.input.setInputProcessor(stage);
-        gamePoint = new GamePoint();
 
         JsonObject started = JsonParser.parseString(gameStartedMessage).getAsJsonObject();
         gameId = started.get("game_id").getAsString();
@@ -358,7 +354,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         }
 
         String action = message.has("action") ? message.get("action").getAsString() : "";
-        PlayerApi.applyPlayerUpdate(message);
         if (gameOver && handleRematchMessage(action, raw, message)) {
             return;
         }
