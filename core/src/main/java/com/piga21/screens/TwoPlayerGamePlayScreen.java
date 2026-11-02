@@ -56,7 +56,8 @@ import com.piga21.utils.Util;
 /**
  * Two-player (online) blackjack. The server owns the game: this screen sends the player's
  * actions and draws whatever state the server sends back, from this player's point of view.
- * The one who busts loses; if both stand the higher hand wins.
+ * Players can only hit or stand. The one who busts loses; if both stand the higher hand
+ * wins, and equal hands are a draw where no chips change hands.
  */
 public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private static final String HIDDEN_CARD = "HIDDEN";
@@ -83,7 +84,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private Stack myScore, opponentScore;
     private Image timerFill;
     private Table timerRow, actionRow;
-    private TextButton hitButton, standButton, doubleButton, surrenderButton;
+    private TextButton hitButton, standButton;
 
     private final List<Image> myCardImages = new ArrayList<>();
     private final List<String> myCardsShown = new ArrayList<>();
@@ -237,11 +238,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         // Actions, along the bottom
         hitButton = UiKit.button(assetStore, "HIT", UiKit.Style.PRIMARY, () -> act("hit", () -> playSound(assetStore.hitSound)));
         standButton = UiKit.button(assetStore, "STAND", UiKit.Style.SECONDARY, () -> act("stand", () -> playSound(assetStore.bell)));
-        doubleButton = UiKit.button(assetStore, "DOUBLE", UiKit.Style.SECONDARY, () -> act("double", () -> {
-            playSound(assetStore.hitSound);
-            playSound(assetStore.betchipSound);
-        }));
-        surrenderButton = UiKit.button(assetStore, "SURRENDER", UiKit.Style.SECONDARY, () -> act("surrender", () -> playSound(assetStore.bell)));
         actionRow = new Table();
         stage.addActor(actionRow);
         hideActionButtons();
@@ -495,10 +491,8 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         hideActionButtons();
         if (gameOver || awaitingServer || !isMyTurn()) return;
 
-        actionRow.add(hitButton).width(270).height(110).padRight(24);
-        actionRow.add(standButton).width(270).height(110);
-        if (gameView.get("can_double").getAsBoolean()) actionRow.add(doubleButton).width(270).height(110).padLeft(24);
-        if (gameView.get("can_surrender").getAsBoolean()) actionRow.add(surrenderButton).width(300).height(110).padLeft(24);
+        actionRow.add(hitButton).width(320).height(120).padRight(32);
+        actionRow.add(standButton).width(320).height(120);
         actionRow.pack();
         actionRow.setPosition(stage.getWidth() / 2 - actionRow.getWidth() / 2, 40);
         actionRow.getColor().a = 0;
@@ -607,11 +601,11 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
         return switch (reason) {
             case "bust" -> won ? opponentName + " busted!" : "You busted!";
-            case "blackjack" -> "push".equals(outcome) ? "Both blackjack!" : (won ? "Blackjack!" : opponentName + " has blackjack");
+            case "blackjack" -> "push".equals(outcome) ? "You both have blackjack, so it's a draw" : (won ? "Blackjack!" : opponentName + " has blackjack");
             case "surrender" -> won ? opponentName + " surrendered" : "You surrendered";
             case "quit" -> won ? opponentName + " left the game" : "You left the game";
             case "disconnect" -> won ? opponentName + " disconnected" : "You were disconnected";
-            case "push" -> "Push - it's a tie";
+            case "push" -> "Equal hands, so no one wins";
             default -> won ? "Your hand wins" : opponentName + "'s hand wins";
         };
     }
@@ -637,7 +631,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         Table panel = new Table();
         panel.setBackground(UiKit.panel());
 
-        Label title = GameText.label(assetStore.heroFont, push ? "PUSH" : blackjack ? "BLACKJACK!" : won ? "YOU WIN" : "YOU LOSE");
+        Label title = GameText.label(assetStore.heroFont, push ? "DRAW" : blackjack ? "BLACKJACK!" : won ? "YOU WIN" : "YOU LOSE");
         title.setColor(won ? UiKit.GOLD : Color.WHITE);
         panel.add(title).colspan(3).row();
         Label reason = GameText.label(assetStore.messageFont, resultMessage(result));
