@@ -65,7 +65,7 @@ configure(subprojects - project(':android')) {
 
 subprojects {
   version = '$projectVersion'
-  ext.appName = 'lucky21'
+  ext.appName = 'piga21'
   repositories {
     mavenCentral()
     maven { url 'https://s01.oss.sonatype.org' }
@@ -77,4 +77,4 @@ subprojects {
   }
 }
 
-eclipse.project.name = 'lucky21' + '-parent'
+eclipse.project.name = 'piga21' + '-parent'

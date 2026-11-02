@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">Blackjack</string>
+  <string name="app_name">Piga21</string>
   <string name="server_client_id_old">640409384650-9rekqm0e9mua2tgrrsvc7bjf4dad8rrj.apps.googleusercontent.com</string>
   <string name="server_client_id">1087625036439-42j754m65okkd9t3kfeavbtj3rluike7.apps.googleusercontent.com</string>
 </resources>
