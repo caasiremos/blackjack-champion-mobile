@@ -1,25 +1,29 @@
 package com.piga21.screens;
 
-import static com.piga21.utils.Settings.showMenuItemDialog;
 import static com.piga21.utils.Util.blackJackEffect;
-import static com.piga21.utils.Util.buttonSize;
-import static com.piga21.utils.Util.layoutButtonsAtBottomRightHalf;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -30,22 +34,23 @@ import com.google.gson.JsonParser;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import com.piga21.AssetStore;
 import com.piga21.BackHandler;
 import com.piga21.Piga21Game;
 import com.piga21.cards.Card;
-import com.piga21.cards.CardDealer;
 import com.piga21.points.GamePoint;
 import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.ChipBadge;
 import com.piga21.utils.CommonGameFunctions;
-import com.piga21.utils.GameText;
 import com.piga21.utils.CommonUtilInterface;
+import com.piga21.utils.GameText;
 import com.piga21.utils.OverlayContainer;
 import com.piga21.utils.PlayerApi;
 import com.piga21.utils.Settings;
+import com.piga21.utils.UiKit;
 import com.piga21.utils.Util;
 
 /**
@@ -55,10 +60,15 @@ import com.piga21.utils.Util;
  */
 public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private static final String HIDDEN_CARD = "HIDDEN";
-    private static final float CARD_SPACING = 10;
+    private static final float CARD_WIDTH = 165, CARD_HEIGHT = 230; // the card art is 132x184
+    private static final float CARD_SPACING = 14;
+    private static final float TOP_BAR_HEIGHT = 120;
+    private static final float TIMER_WIDTH = 520;
+    private static final float TURN_SECONDS = 30; // the server's turn length, for the timer bar
     private static final float BACK_PRESS_WINDOW_SECONDS = 2f;
     private static final int LOW_TIME_SECONDS = 5;
     private static final Color LOW_TIME_TINT = Color.valueOf("#FF5A4A");
+    private static final Color WIN_COLOR = Color.valueOf("#5BD47A");
 
     private final Game game;
     public WebSocketHandler webSocketHandler;
@@ -67,14 +77,13 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     public Stage stage;
     public GamePoint gamePoint;
 
-    TextureRegion hitTR, standTR, doubleTR, surrenderTR, restartTR, deckTR, backgroundTR, counterBackgroundTR, winDialogTR, looseDialogTR;
-    TextureRegion menuTR, exitTR, menusTR, musicOffTR, musicOnTR, rewardButtonTR, shareTR, soundOffTR, soundOnTR;
-
-    Image hitImage, standImage, doubleImage, surrenderImage, restartImage, deckImage, backgroundImage,
-        counterBackgroundImagePlayer, counterBackgroundImageOpponent, winDialogImage, looseDialogImage;
-    Image menuImage, exitImage, menusImage, musicOffImage, musicOnImage, rewardButtonImage, shareImage, soundsOffImage, soundOnImage;
-
-    Label handCounter, opponentCounter, turnLabel, infoLabel, pointsLabel, myNameLabel, opponentNameTag;
+    private TextureRegion deckTR;
+    private Image deckImage;
+    private Label myScoreLabel, opponentScoreLabel, turnLabel, timerSecondsLabel, stakeLabel, pointsLabel;
+    private Stack myScore, opponentScore;
+    private Image timerFill;
+    private Table timerRow, actionRow;
+    private TextButton hitButton, standButton, doubleButton, surrenderButton;
 
     private final List<Image> myCardImages = new ArrayList<>();
     private final List<String> myCardsShown = new ArrayList<>();
@@ -92,18 +101,17 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private String incomingRematchId;
     private boolean awaitingRematch = false;
     private float rematchSecondsLeft = 0;
-    private Label rematchStatusLabel, playersLink;
-    private TextureRegion acceptTR;
+    private Label rematchStatusLabel;
+    private TextButton rematchButton;
     private boolean showingAccept = false;
-    private static final float RESULT_BUTTON_HEIGHT = 129;
     private JsonObject gameView;
     private boolean awaitingServer = false;
     private boolean gameOver = false;
-    private boolean overlayShowing = false;
+    private boolean menuShowing = false;
+    private boolean leaveArmed = false;
     private float turnSecondsLeft = 0;
     private float backPressedAt = -1;
     private float elapsed = 0;
-    private float cardWidth, cardHeight;
 
 
     /**
@@ -127,149 +135,185 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         stakeAmount = started.getAsJsonObject("game").get("amount").getAsInt();
         Util.storeCurrentGameId(gameId);
 
-        loadRegions();
+        // From the red theme, so the deck and face-down cards always match the table
+        deckTR = assetStore.backgroundComponents.findRegion("deck");
         buildTable();
-        setChip(started.getAsJsonObject("game").get("amount").getAsInt());
         listenToServer();
 
         applyGameView(started.getAsJsonObject("game"));
     }
 
-    private void loadRegions() {
-        hitTR = assetStore.components.findRegion("button_hit");
-        standTR = assetStore.components.findRegion("button_stand");
-        doubleTR = assetStore.components.findRegion("button_double");
-        surrenderTR = assetStore.components.findRegion("button_surrender");
-        restartTR = assetStore.otherComponents.findRegion("button_continue");
-        acceptTR = assetStore.otherComponents.findRegion("button_accept");
-        deckTR = assetStore.components.findRegion("deck");
-        menuTR = assetStore.components.findRegion("menu");
-        counterBackgroundTR = assetStore.components.findRegion("counter_background");
-        backgroundTR = assetStore.components.findRegion("background");
-        winDialogTR = assetStore.components.findRegion("dialog_win");
-        looseDialogTR = assetStore.components.findRegion("dialog_loose");
-
-        exitTR = assetStore.otherComponents.findRegion("exit");
-        menusTR = assetStore.otherComponents.findRegion("menu");
-        musicOffTR = assetStore.otherComponents.findRegion("music_off");
-        musicOnTR = assetStore.otherComponents.findRegion("music_on");
-        rewardButtonTR = assetStore.otherComponents.findRegion("reward_button");
-        shareTR = assetStore.otherComponents.findRegion("share");
-        soundOffTR = assetStore.otherComponents.findRegion("sound_off");
-        soundOnTR = assetStore.otherComponents.findRegion("sound_on");
-
-
-        TextureRegion anyCard = assetStore.getTextureRegion(Card.ACE_SPADE);
-        cardWidth = anyCard.getRegionWidth();
-        cardHeight = anyCard.getRegionHeight();
-    }
+    // ---- Layout ----
 
     private void buildTable() {
-        backgroundImage = new Image(backgroundTR);
-        backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
-        stage.addActor(backgroundImage);
+        float width = stage.getWidth(), height = stage.getHeight();
 
+        Image background = assetStore.redBackground();
+        background.setSize(width, height);
+        Image vignette = new Image(UiKit.vignette());
+        vignette.setSize(width, height);
+        vignette.setTouchable(Touchable.disabled);
+        stage.addActor(background);
+        stage.addActor(vignette);
+
+        // Top bar: who you're playing, the stake, and the menu
+        Table bar = new Table();
+        bar.setBackground(UiKit.bar());
+        bar.pad(0, 40, 0, 40);
+        Label vs = GameText.label(assetStore.chipTaglineFont, "PLAYING AGAINST");
+        vs.setColor(UiKit.MUTED);
+        Table names = new Table();
+        names.add(vs).left().row();
+        names.add(GameText.label(assetStore.buttonFont, opponentName)).left();
+        Table opponent = new Table();
+        opponent.add(UiKit.initialBadge(assetStore, opponentName)).size(72, 72).padRight(18);
+        opponent.add(names).left();
+
+        stakeLabel = GameText.label(assetStore.buttonFont, "");
+        stakeLabel.setColor(UiKit.GOLD);
+        Table stake = new Table();
+        stake.setBackground(UiKit.pill());
+        stake.add(stakeLabel);
+
+        TextureRegion settingsArt = assetStore.otherComponents.findRegion("button_settings");
+        // The art is a round gear icon followed by a "SETTINGS" pill; only the icon is used
+        Image menu = new Image(new TextureRegion(settingsArt, 0, 0, settingsArt.getRegionHeight(), settingsArt.getRegionHeight()));
+        tappable(menu, this::showMenu);
+
+        Table left = new Table();
+        left.add(opponent);
+        bar.add(left).left().expandX().uniformX();
+        bar.add(stake).center();
+        Table right = new Table();
+        right.add(menu).size(88, 88);
+        bar.add(right).right().expandX().uniformX();
+        bar.setBounds(0, height - TOP_BAR_HEIGHT, width, TOP_BAR_HEIGHT);
+        stage.addActor(bar);
+        Image rule = new Image(UiKit.rule());
+        rule.setBounds(0, height - TOP_BAR_HEIGHT - 3, width, 3);
+        stage.addActor(rule);
+
+        // The deck the cards come from, on the left
         deckImage = new Image(deckTR);
-        deckImage.setPosition(20, deckYPosition());
+        float deckHeight = CARD_HEIGHT * 1.06f;
+        deckImage.setSize(deckHeight * deckTR.getRegionWidth() / deckTR.getRegionHeight(), deckHeight);
+        deckImage.setPosition(60, middleY() - deckHeight / 2);
         stage.addActor(deckImage);
 
-        hitImage = new Image(hitTR);
-        standImage = new Image(standTR);
-        doubleImage = new Image(doubleTR);
-        surrenderImage = new Image(surrenderTR);
-        restartImage = new Image(restartTR);
-        buttonSize(standImage, hitImage, doubleImage, surrenderImage);
+        // This game's stake chip, on the right (set by the challenger, not this player's pick)
+        ChipBadge chip = new ChipBadge(assetStore, ChipBadge.keyForAmount(stakeAmount), 190);
+        chip.setPosition(width - chip.getWidth() - 60, middleY() - chip.getHeight() / 2);
+        stage.addActor(chip);
 
-        counterBackgroundImagePlayer = new Image(counterBackgroundTR);
-        counterBackgroundImageOpponent = new Image(counterBackgroundTR);
-        counterBackgroundImagePlayer.setSize(counterBackgroundImagePlayer.getWidth() * 4, counterBackgroundImagePlayer.getHeight() * 4);
-        counterBackgroundImageOpponent.setSize(counterBackgroundImageOpponent.getWidth() * 4, counterBackgroundImageOpponent.getHeight() * 4);
-        counterBackgroundImagePlayer.setPosition(stage.getWidth() / 2 - counterBackgroundImagePlayer.getWidth() / 2, myHandY() + cardHeight + 12);
-        counterBackgroundImageOpponent.setPosition(stage.getWidth() / 2 - counterBackgroundImageOpponent.getWidth() / 2, opponentHandY() - counterBackgroundImageOpponent.getHeight() - 12);
+        // Score pills beside each hand: gold for you, maroon for them
+        myScore = scorePill("scoreMine", UiKit.GOLD, UiKit.GOLD_DARK, UiKit.BUTTON_TEXT);
+        myScoreLabel = (Label) myScore.getChildren().peek();
+        opponentScore = scorePill("scoreTheirs", UiKit.MAROON, UiKit.GOLD, UiKit.GOLD);
+        opponentScoreLabel = (Label) opponentScore.getChildren().peek();
+        stage.addActor(myScore);
+        stage.addActor(opponentScore);
 
-        winDialogImage = new Image(winDialogTR);
-        looseDialogImage = new Image(looseDialogTR);
+        // Whose turn, with a bar that runs down
+        turnLabel = GameText.label(assetStore.titleFont, "");
+        turnLabel.setAlignment(Align.center);
+        Image timerTrack = new Image(UiKit.circle("barTrack", new Color(1, 1, 1, 0.12f), null, 4, 0));
+        timerFill = new Image(UiKit.circle("barFill", UiKit.GOLD, null, 4, 0));
+        Group timerBar = new Group();
+        timerBar.setSize(TIMER_WIDTH, 8);
+        timerTrack.setSize(TIMER_WIDTH, 8);
+        timerFill.setSize(TIMER_WIDTH, 8);
+        timerBar.addActor(timerTrack);
+        timerBar.addActor(timerFill);
+        timerSecondsLabel = GameText.label(assetStore.chipNameFont, "");
+        timerRow = new Table();
+        timerRow.add(turnLabel).colspan(2).padBottom(10).row();
+        timerRow.add(timerBar).size(TIMER_WIDTH, 8).padRight(18);
+        timerRow.add(timerSecondsLabel).width(70).left();
+        timerRow.pack();
+        timerRow.setPosition(width / 2 - timerRow.getWidth() / 2, middleY() - timerRow.getHeight() / 2);
+        timerRow.setTouchable(Touchable.disabled);
+        stage.addActor(timerRow);
 
-        menuImage = new Image(menuTR);
-        exitImage = new Image(exitTR);
-        menusImage = new Image(menusTR);
-        musicOffImage = new Image(musicOffTR);
-        musicOnImage = new Image(musicOnTR);
-        rewardButtonImage = new Image(rewardButtonTR);
-        shareImage = new Image(shareTR);
-        soundsOffImage = new Image(soundOffTR);
-        soundOnImage = new Image(soundOnTR);
-        menusImage.setSize(menusImage.getWidth() * 3, menusImage.getHeight() * 3);
-        menusImage.setPosition(stage.getWidth() - menusImage.getWidth() - 50f, stage.getHeight() - menusImage.getHeight() - 50f);
-
-        stage.addActor(standImage);
-        stage.addActor(hitImage);
-        stage.addActor(doubleImage);
-        stage.addActor(surrenderImage);
-        stage.addActor(menusImage);
-        stage.addActor(counterBackgroundImagePlayer);
-        stage.addActor(counterBackgroundImageOpponent);
-
-        Label.LabelStyle counterStyle = new Label.LabelStyle(assetStore.counterFont, Color.WHITE);
-        handCounter = new Label("0", counterStyle);
-        opponentCounter = new Label("0", counterStyle);
-        stage.addActor(handCounter);
-        stage.addActor(opponentCounter);
-
-        Label.LabelStyle ownerStyle = new Label.LabelStyle(assetStore.listFont, Color.WHITE);
-        myNameLabel = new Label("YOU", ownerStyle);
-        opponentNameTag = new Label(opponentName.toUpperCase(), ownerStyle);
-        stage.addActor(myNameLabel);
-        stage.addActor(opponentNameTag);
-
-        Label.LabelStyle infoStyle = new Label.LabelStyle(assetStore.listFont, Color.WHITE);
-        turnLabel = new Label("", new Label.LabelStyle(assetStore.dialogFont, Color.valueOf("#F4AD31")));
-        infoLabel = new Label("", infoStyle);
-        stage.addActor(turnLabel);
-        stage.addActor(infoLabel);
-
-        hideActionButtons();
-
-        actionButton(hitImage, "hit", () -> playSound(assetStore.hitSound));
-        actionButton(standImage, "stand", () -> playSound(assetStore.bell));
-        actionButton(doubleImage, "double", () -> {
+        // Actions, along the bottom
+        hitButton = UiKit.button(assetStore, "HIT", UiKit.Style.PRIMARY, () -> act("hit", () -> playSound(assetStore.hitSound)));
+        standButton = UiKit.button(assetStore, "STAND", UiKit.Style.SECONDARY, () -> act("stand", () -> playSound(assetStore.bell)));
+        doubleButton = UiKit.button(assetStore, "DOUBLE", UiKit.Style.SECONDARY, () -> act("double", () -> {
             playSound(assetStore.hitSound);
             playSound(assetStore.betchipSound);
-        });
-        actionButton(surrenderImage, "surrender", () -> playSound(assetStore.bell));
-
-        showMenuItemDialog(stage, commonUtilInterface, menusImage, menuImage, musicOffImage, musicOnImage, soundOnImage, soundsOffImage, shareImage, exitImage, rewardButtonImage, overlayShowing);
+        }));
+        surrenderButton = UiKit.button(assetStore, "SURRENDER", UiKit.Style.SECONDARY, () -> act("surrender", () -> playSound(assetStore.bell)));
+        actionRow = new Table();
+        stage.addActor(actionRow);
+        hideActionButtons();
     }
 
     /**
-     * The chip for this game's stake (set by the challenger), not the one this player picked.
+     * A score in a rounded pill, e.g. "16" or "9+" for a hand with a hidden card.
      */
-    private void setChip(int amount) {
-        ChipBadge chip = new ChipBadge(assetStore, ChipBadge.keyForAmount(amount), 240);
-        chip.setPosition(
-            stage.getWidth() - chip.getWidth() - 40f,
-            (stage.getHeight() - chip.getHeight()) / 2f
-        );
-        stage.addActor(chip);
+    private Stack scorePill(String key, Color fill, Color ring, Color text) {
+        Stack pill = new Stack();
+        pill.add(new Image(UiKit.circle(key, fill, ring, 40, 4)));
+        Label label = GameText.label(assetStore.buttonFont, "0");
+        label.setColor(text);
+        label.setAlignment(Align.center);
+        pill.add(label);
+        pill.setSize(124, 80);
+        return pill;
     }
 
-    private void actionButton(Image button, String type, Runnable feedback) {
-        button.addListener(new ClickListener() {
+    private float myHandY() {
+        return 190;
+    }
+
+    private float opponentHandY() {
+        return stage.getHeight() - TOP_BAR_HEIGHT - 40 - CARD_HEIGHT;
+    }
+
+    private float middleY() {
+        return (myHandY() + CARD_HEIGHT + opponentHandY()) / 2;
+    }
+
+    /**
+     * Hands are centred, so a hand of n cards starts this far from the left edge.
+     */
+    private float handLeftEdge(int cards) {
+        float totalWidth = cards * CARD_WIDTH + Math.max(0, cards - 1) * CARD_SPACING;
+        return (stage.getWidth() - totalWidth) / 2;
+    }
+
+    /**
+     * Grows a little while pressed, like the rest of the game's buttons.
+     */
+    private void tappable(Actor actor, Runnable onTap) {
+        actor.setTouchable(Touchable.enabled);
+        if (actor instanceof Group group) group.setTransform(true);
+        actor.addListener(new ClickListener() {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                event.getListenerActor().addAction(Actions.scaleTo(1.05f, 1.05f, 0.1f));
-                return true;
+                actor.setOrigin(Align.center);
+                actor.addAction(Actions.scaleTo(1.08f, 1.08f, 0.08f));
+                return super.touchDown(event, x, y, pointer, button);
             }
 
             @Override
             public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                event.getListenerActor().addAction(Actions.scaleTo(1f, 1f, 0.1f));
-                if (awaitingServer || gameOver || !isMyTurn()) return;
+                actor.addAction(Actions.scaleTo(1f, 1f, 0.08f));
+                super.touchUp(event, x, y, pointer, button);
+            }
 
-                feedback.run();
-                sendGameAction(type);
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                onTap.run();
             }
         });
+    }
+
+    // ---- Playing ----
+
+    private void act(String type, Runnable feedback) {
+        if (awaitingServer || gameOver || !isMyTurn()) return;
+        feedback.run();
+        sendGameAction(type);
     }
 
     private void sendGameAction(String type) {
@@ -314,7 +358,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         String action = message.has("action") ? message.get("action").getAsString() : "";
         PlayerApi.applyPlayerUpdate(message);
         if ("balance_updated".equals(action) && pointsLabel != null) {
-            pointsLabel.setText(GamePoint.POINTS + gamePoint.getPoints());
+            pointsLabel.setText(balanceText());
         }
         if (gameOver && handleRematchMessage(action, raw, message)) {
             return;
@@ -347,22 +391,14 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
             playSound(assetStore.hitSound);
         }
 
-        handCounter.setText(String.valueOf(view.get("my_score").getAsInt()));
+        myScoreLabel.setText(String.valueOf(view.get("my_score").getAsInt()));
         boolean opponentHidden = opponentCardsShown.contains(HIDDEN_CARD);
-        opponentCounter.setText(view.get("opponent_score").getAsInt() + (opponentHidden ? "+" : ""));
-        centreOn(handCounter, counterBackgroundImagePlayer);
-        centreOn(opponentCounter, counterBackgroundImageOpponent);
-
-        // Whose hand is whose, just right of each hand
-        myNameLabel.pack();
-        myNameLabel.setPosition(handRightEdge(myCardsShown.size()) + 30, myHandY() + cardHeight / 2 - myNameLabel.getHeight() / 2);
-        opponentNameTag.pack();
-        opponentNameTag.setPosition(handRightEdge(opponentCardsShown.size()) + 30, opponentHandY() + cardHeight / 2 - opponentNameTag.getHeight() / 2);
+        opponentScoreLabel.setText(view.get("opponent_score").getAsInt() + (opponentHidden ? "+" : ""));
+        placeScore(myScore, myCardsShown.size(), myHandY());
+        placeScore(opponentScore, opponentCardsShown.size(), opponentHandY());
 
         int multiplier = view.get("multiplier").getAsInt();
-        infoLabel.setText("vs " + opponentName + "   STAKE " + view.get("stake").getAsInt() + (multiplier > 1 ? "  (DOUBLED)" : ""));
-        infoLabel.pack();
-        infoLabel.setPosition(40, stage.getHeight() - infoLabel.getHeight() - 40);
+        stakeLabel.setText(String.format(Locale.US, "STAKE  %,d", view.get("stake").getAsInt()) + (multiplier > 1 ? "  ·  DOUBLED" : ""));
 
         turnSecondsLeft = view.get("turn_seconds_left").getAsFloat();
         updateTurnLabel();
@@ -371,10 +407,21 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         if ("finished".equals(view.get("status").getAsString())) {
             gameOver = true;
             hideActionButtons();
+            timerRow.addAction(Actions.fadeOut(0.3f));
             JsonObject result = view.getAsJsonObject("result");
-            // Let the last card and the revealed hole card land before the dialog
+            // Let the last card and the revealed hole card land before the result
             stage.addAction(Actions.sequence(Actions.delay(1.5f), Actions.run(() -> showGameOver(result))));
         }
+    }
+
+    /**
+     * The score sits just left of its hand, level with the middle of the cards.
+     */
+    private void placeScore(Stack score, int cards, float handY) {
+        float x = handLeftEdge(cards) - score.getWidth() - 30;
+        float y = handY + CARD_HEIGHT / 2 - score.getHeight() / 2;
+        score.clearActions();
+        score.addAction(Actions.moveTo(x, y, 0.3f));
     }
 
     /**
@@ -399,25 +446,23 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
             }
         }
 
-        float totalWidth = target.size() * cardWidth + (target.size() - 1) * CARD_SPACING;
-        float startX = (stage.getWidth() - totalWidth) / 2;
-
+        float startX = handLeftEdge(target.size());
         for (int i = 0; i < images.size(); i++) {
-            images.get(i).addAction(Actions.moveTo(startX + i * (cardWidth + CARD_SPACING), y, 0.3f));
+            images.get(i).addAction(Actions.moveTo(startX + i * (CARD_WIDTH + CARD_SPACING), y, 0.3f));
         }
 
         boolean added = false;
         for (int i = shown.size(); i < target.size(); i++) {
             Image cardImage = new Image(cardRegion(target.get(i)));
-            cardImage.setSize(cardWidth, cardHeight);
-            cardImage.setPosition(20, deckYPosition());
+            cardImage.setSize(CARD_WIDTH, CARD_HEIGHT);
+            cardImage.setPosition(deckImage.getX(), deckImage.getY());
             cardImage.getColor().a = 0;
             stage.addActor(cardImage);
             cardImage.addAction(Actions.sequence(
                 Actions.delay((i - shown.size()) * 0.2f),
                 Actions.parallel(
-                    Actions.moveTo(startX + i * (cardWidth + CARD_SPACING), y, 0.5f),
-                    Actions.fadeIn(0.5f)
+                    Actions.moveTo(startX + i * (CARD_WIDTH + CARD_SPACING), y, 0.5f, Interpolation.pow2Out),
+                    Actions.fadeIn(0.3f)
                 )
             ));
             images.add(cardImage);
@@ -430,7 +475,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     }
 
     private void revealCard(Image cardImage, String cardName) {
-        cardImage.setOrigin(cardWidth / 2, cardHeight / 2);
+        cardImage.setOrigin(CARD_WIDTH / 2, CARD_HEIGHT / 2);
         cardImage.addAction(Actions.sequence(
             Actions.scaleTo(0f, 1f, 0.15f),
             Actions.run(() -> cardImage.setDrawable(new TextureRegionDrawable(cardRegion(cardName)))),
@@ -450,21 +495,18 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         hideActionButtons();
         if (gameOver || awaitingServer || !isMyTurn()) return;
 
-        List<Image> buttons = new ArrayList<>();
-        buttons.add(hitImage);
-        buttons.add(standImage);
-        if (gameView.get("can_double").getAsBoolean()) buttons.add(doubleImage);
-        if (gameView.get("can_surrender").getAsBoolean()) buttons.add(surrenderImage);
-
-        for (Image button : buttons) button.setVisible(true);
-        layoutButtonsAtBottomRightHalf(stage, buttons.toArray(new Image[0]));
+        actionRow.add(hitButton).width(270).height(110).padRight(24);
+        actionRow.add(standButton).width(270).height(110);
+        if (gameView.get("can_double").getAsBoolean()) actionRow.add(doubleButton).width(270).height(110).padLeft(24);
+        if (gameView.get("can_surrender").getAsBoolean()) actionRow.add(surrenderButton).width(300).height(110).padLeft(24);
+        actionRow.pack();
+        actionRow.setPosition(stage.getWidth() / 2 - actionRow.getWidth() / 2, 40);
+        actionRow.getColor().a = 0;
+        actionRow.addAction(Actions.fadeIn(0.2f));
     }
 
     private void hideActionButtons() {
-        hitImage.setVisible(false);
-        standImage.setVisible(false);
-        doubleImage.setVisible(false);
-        surrenderImage.setVisible(false);
+        actionRow.clearChildren();
     }
 
     private void updateTurnLabel() {
@@ -472,47 +514,19 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         int seconds = (int) Math.ceil(turnSecondsLeft);
         if (gameOver || gameView == null) {
             turnLabel.setText("");
-        } else if (isMyTurn()) {
-            turnLabel.setText("YOUR TURN  " + seconds);
-        } else {
-            turnLabel.setText(opponentName.toUpperCase() + "'S TURN  " + seconds);
+            timerSecondsLabel.setText("");
+            return;
         }
-        // Last few seconds turn red (the font is gold, so this tint reads as red)
-        turnLabel.setColor(seconds <= LOW_TIME_SECONDS ? LOW_TIME_TINT : Color.WHITE);
-        turnLabel.pack();
+
         boolean mine = isMyTurn();
-        int cards = mine ? myCardsShown.size() : opponentCardsShown.size();
-        float handY = mine ? myHandY() : opponentHandY();
-        float handLeft = stage.getWidth() - handRightEdge(cards);
-        turnLabel.setPosition(handLeft - turnLabel.getWidth() - 40, handY + cardHeight / 2 - turnLabel.getHeight() / 2);
-    }
-
-    /**
-     * Hands are centred, so a hand of n cards ends this far from the left edge.
-     */
-    private float handRightEdge(int cards) {
-        float totalWidth = cards * cardWidth + Math.max(0, cards - 1) * CARD_SPACING;
-        return (stage.getWidth() + totalWidth) / 2;
-    }
-
-    private void centreOn(Label label, Image background) {
-        label.pack();
-        label.setPosition(
-            background.getX() + background.getWidth() / 2 - label.getWidth() / 2,
-            background.getY() + background.getHeight() / 2 - label.getHeight() / 2
-        );
-    }
-
-    private float myHandY() {
-        return 170 + 170 / 4f; // button height + a quarter, same as the classic table
-    }
-
-    private float opponentHandY() {
-        return stage.getHeight() - 195 - 40;
-    }
-
-    private float deckYPosition() {
-        return this.stage.getHeight() / 2 - (float) 195 / 2; //195 is the deck height
+        turnLabel.setText(mine ? "YOUR TURN" : opponentName.toUpperCase(Locale.US) + "'S TURN");
+        turnLabel.setColor(mine ? UiKit.GOLD : Color.WHITE);
+        timerSecondsLabel.setText(seconds + "s");
+        // Last few seconds turn red
+        boolean low = seconds <= LOW_TIME_SECONDS;
+        timerFill.setColor(low ? LOW_TIME_TINT : Color.WHITE);
+        timerSecondsLabel.setColor(low ? LOW_TIME_TINT : Color.WHITE);
+        timerFill.setWidth(Math.max(8, TIMER_WIDTH * Math.min(1f, turnSecondsLeft / TURN_SECONDS)));
     }
 
     private void playSound(Sound sound) {
@@ -520,6 +534,71 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
             sound.play();
         }
     }
+
+    // ---- Menu ----
+
+    /**
+     * Sounds, leaving the table (forfeits the hand, so it asks twice) and back to the game.
+     */
+    private void showMenu() {
+        if (gameOver) return;
+        OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage, 0.8f);
+        leaveArmed = false;
+
+        Table panel = new Table();
+        panel.setBackground(UiKit.panel());
+        panel.add(GameText.title(assetStore, "MENU")).colspan(2).padBottom(30).row();
+
+        TextButton[] sound = new TextButton[1];
+        sound[0] = UiKit.button(assetStore, Settings.getSoundSetting() ? "ON" : "OFF", UiKit.Style.SMALL, () -> {
+            Settings.toggleSoundSettings(!Settings.getSoundSetting());
+            sound[0].setText(Settings.getSoundSetting() ? "ON" : "OFF");
+        });
+        panel.add(GameText.label(assetStore.messageFont, "Game sounds")).left().width(420).padBottom(24);
+        panel.add(sound[0]).width(190).height(76).right().padBottom(24).row();
+
+        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d chips)", currentStake()));
+        leaveHint.setColor(UiKit.MUTED);
+        TextButton[] leave = new TextButton[1];
+        leave[0] = UiKit.button(assetStore, "LEAVE TABLE", UiKit.Style.SECONDARY, () -> {
+            if (!leaveArmed) {
+                leaveArmed = true;
+                leave[0].setText("TAP AGAIN TO LEAVE");
+                return;
+            }
+            closeMenu();
+            forfeit();
+        });
+        panel.add(leave[0]).colspan(2).width(610).height(100).padTop(10).row();
+        panel.add(leaveHint).colspan(2).padTop(8).padBottom(26).row();
+        panel.add(UiKit.button(assetStore, "BACK TO GAME", UiKit.Style.PRIMARY, this::closeMenu))
+            .colspan(2).width(610).height(110).row();
+
+        panel.pack();
+        panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() / 2 - panel.getHeight() / 2);
+        overlay.addActor(panel);
+        CommonGameFunctions.showOverlay();
+        menuShowing = true;
+    }
+
+    private void closeMenu() {
+        CommonGameFunctions.hideOverlayScreen();
+        menuShowing = false;
+    }
+
+    private int currentStake() {
+        return gameView != null ? gameView.get("stake").getAsInt() : stakeAmount;
+    }
+
+    private void forfeit() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("action", "end_game");
+        data.put("game_id", gameId);
+        webSocketHandler.sendMessage(new Gson().toJson(data));
+        // The server replies with game_over, which shows the result
+    }
+
+    // ---- Result ----
 
     private String resultMessage(JsonObject result) {
         String outcome = result.get("outcome").getAsString();
@@ -537,121 +616,105 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         };
     }
 
+    private String balanceText() {
+        return String.format(Locale.US, "Balance  %,d chips", gamePoint.getPoints());
+    }
+
     public void showGameOver(JsonObject result) {
         String outcome = result.get("outcome").getAsString();
         int chips = result.get("chips").getAsInt();
         boolean won = "win".equals(outcome);
+        boolean push = "push".equals(outcome);
         boolean blackjack = won && "blackjack".equals(result.get("reason").getAsString());
 
         // Chips are settled on the server; "balance_updated" brings the new total
-
-        OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage);
-
-        Image dialog = won ? winDialogImage : looseDialogImage;
-        dialog.setSize(636, 636);
-        dialog.setPosition(stage.getWidth() / 2 - dialog.getWidth() / 2, stage.getHeight() / 2 - dialog.getHeight() / 2);
-        if (!"push".equals(outcome)) {
-            overlay.addActor(dialog);
-            GameText.addRibbonText(assetStore, overlay, dialog, won ? "WIN" : "LOSE");
-        }
-
         if (won) {
             playSound(blackjack ? assetStore.blackJack : assetStore.win);
         }
 
-        Label.LabelStyle headlineStyle = new Label.LabelStyle(assetStore.blackJackFont, Color.valueOf("#F4AD31"));
-        Label.LabelStyle countStyle = new Label.LabelStyle(assetStore.dialogCounterFont, Color.valueOf("#FFFFFF"));
-        Label.LabelStyle chipsStyle = new Label.LabelStyle(assetStore.dialogFont, Color.valueOf("#EB2F23"));
-        Label.LabelStyle betStyle = new Label.LabelStyle(assetStore.betAmountDialogFont, Color.valueOf("#8C0303"));
+        OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage, 0.82f);
 
-        Label headline = new Label("push".equals(outcome) ? "PUSH" : (blackjack ? "BLACKJACK" : ""), headlineStyle);
-        headline.setPosition(overlay.getWidth() / 2 - headline.getWidth() / 2, overlay.getHeight() - headline.getHeight() * 1.5f);
+        Table panel = new Table();
+        panel.setBackground(UiKit.panel());
 
-        Label reasonLabel = new Label(resultMessage(result), new Label.LabelStyle(assetStore.listFont, Color.WHITE));
-        reasonLabel.pack();
-        reasonLabel.setPosition(overlay.getWidth() / 2 - reasonLabel.getWidth() / 2, dialog.getY() + dialog.getHeight() + 20);
+        Label title = GameText.label(assetStore.heroFont, push ? "PUSH" : blackjack ? "BLACKJACK!" : won ? "YOU WIN" : "YOU LOSE");
+        title.setColor(won ? UiKit.GOLD : Color.WHITE);
+        panel.add(title).colspan(3).row();
+        Label reason = GameText.label(assetStore.messageFont, resultMessage(result));
+        reason.setColor(UiKit.MUTED);
+        panel.add(reason).colspan(3).padBottom(24).row();
 
-        Label opponentLabel = new Label(opponentName, countStyle);
-        Label playerLabel = new Label("You", countStyle);
-        Label opponentScore = new Label(String.valueOf(result.get("opponent_score").getAsInt()), countStyle);
-        Label playerScore = new Label(String.valueOf(result.get("my_score").getAsInt()), countStyle);
-        opponentLabel.setPosition(stage.getWidth() / 2 - dialog.getWidth() / 2 + 80, dialog.getHeight() / 2 + 250);
-        playerLabel.setPosition(stage.getWidth() * 3 / 5 + 50 - dialog.getWidth() / 4, dialog.getHeight() / 2 + 250);
-        opponentScore.setPosition(stage.getWidth() / 2 - dialog.getWidth() / 2 + 120, dialog.getHeight() / 2 + 210);
-        playerScore.setPosition(stage.getWidth() * 3 / 5 + 80 - dialog.getWidth() / 4, dialog.getHeight() / 2 + 210);
+        // Both final hands, side by side
+        panel.add(finalHand(opponentName, result.get("opponent_score").getAsInt(), gameView.getAsJsonArray("opponent_cards"), !won && !push));
+        Label vs = GameText.label(assetStore.chipNameFont, "VS");
+        vs.setColor(UiKit.MUTED);
+        panel.add(vs).pad(0, 36, 0, 36);
+        panel.add(finalHand("You", result.get("my_score").getAsInt(), gameView.getAsJsonArray("my_cards"), won)).row();
 
-        pointsLabel = new Label(GamePoint.POINTS + gamePoint.getPoints(), chipsStyle);
-        // The chips bar sits a quarter of the way up the dialog art; centre on it whatever the font height
-        float chipsBarY = dialog.getY() + dialog.getHeight() * 0.25f;
-        pointsLabel.pack();
-        pointsLabel.setPosition(overlay.getWidth() / 2 - dialog.getWidth() / 2 + 200, chipsBarY - pointsLabel.getHeight() / 2);
-        Label chipsLabel = new Label((chips > 0 ? "+" : "") + chips, betStyle);
-        chipsLabel.pack();
-        chipsLabel.setPosition(overlay.getWidth() / 2 - dialog.getWidth() / 2 + 124 - chipsLabel.getWidth() / 2, chipsBarY - chipsLabel.getHeight() / 2);
+        // Chips won or lost, and the new balance
+        Label chipsLabel = GameText.label(assetStore.titleFont, chips == 0 ? "No chips change hands"
+            : String.format(Locale.US, "%s%,d chips", chips > 0 ? "+" : "-", Math.abs(chips)));
+        chipsLabel.setColor(chips > 0 ? WIN_COLOR : chips < 0 ? LOW_TIME_TINT : Color.WHITE);
+        panel.add(chipsLabel).colspan(3).padTop(26).row();
+        pointsLabel = GameText.label(assetStore.listFont, balanceText());
+        pointsLabel.setColor(UiKit.MUTED);
+        panel.add(pointsLabel).colspan(3).padBottom(28).row();
 
-        overlay.addActor(headline);
-        if (!blackjack) {
-            // The BLACKJACK headline already says it
-            overlay.addActor(reasonLabel);
-        }
-        overlay.addActor(opponentLabel);
-        overlay.addActor(playerLabel);
-        overlay.addActor(opponentScore);
-        overlay.addActor(playerScore);
-        overlay.addActor(pointsLabel);
-        overlay.addActor(chipsLabel);
+        // Rematch asks the same opponent at the same stake; a decline or no answer goes back to the lobby
+        TextButton lobby = UiKit.button(assetStore, "LOBBY", UiKit.Style.SECONDARY, this::leaveToLobby);
+        rematchButton = UiKit.button(assetStore, "REMATCH", UiKit.Style.PRIMARY, () -> {
+            if (awaitingRematch) return;
+            playSound(assetStore.betChipInitializer);
+            requestRematch();
+        });
+        rematchButton.setTransform(true);
+        Table buttons = new Table();
+        buttons.add(lobby).width(300).height(110).padRight(30);
+        buttons.add(rematchButton).width(420).height(110);
+        panel.add(buttons).colspan(3).row();
+        rematchStatusLabel = GameText.label(assetStore.chipTaglineFont, "");
+        rematchStatusLabel.setColor(UiKit.MUTED);
+        rematchStatusLabel.setAlignment(Align.center);
+        panel.add(rematchStatusLabel).colspan(3).padTop(14).row();
+
+        panel.pack();
+        panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() / 2 - panel.getHeight() / 2);
+        panel.setTransform(true);
+        panel.setOrigin(Align.center);
+        panel.setScale(0.92f);
+        panel.addAction(Actions.scaleTo(1f, 1f, 0.35f, Interpolation.swingOut));
+        overlay.addActor(panel);
+        updateRematchStatus();
+
+        CommonGameFunctions.showOverlay();
+        menuShowing = false;
 
         if (blackjack) {
             blackJackEffect(stage);
         }
-
-        CardDealer myCards = new CardDealer(assetStore, overlay.getStage(), myHandY());
-        myCards.dealGameOverCards(overlay.getStage(), cardsOf(gameView.getAsJsonArray("my_cards")), myCards.centerOfCenterXPositionRight(hitImage), stage.getHeight() / 2);
-        CardDealer opponentCards = new CardDealer(assetStore, overlay.getStage(), myHandY());
-        opponentCards.dealGameOverCards(overlay.getStage(), cardsOf(gameView.getAsJsonArray("opponent_cards")), myCards.centerOfCenterXPositionLeft(hitImage) - 200, stage.getHeight() / 2);
-
-        // Continue asks the same opponent for a rematch; a decline or no answer goes back to the lobby
-        restartImage.setSize(390, 129); // button_continue is 269x89
-        restartImage.setPosition(stage.getWidth() / 2 - restartImage.getWidth() / 2, restartImage.getHeight() / 2);
-        restartImage.clearListeners();
-        restartImage.addListener(new ClickListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                restartImage.addAction(Actions.scaleTo(1.2f, 1.2f, 0.1f));
-                return true;
-            }
-
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                restartImage.addAction(Actions.scaleTo(1f, 1f, 0.1f));
-                if (awaitingRematch) return;
-                playSound(assetStore.betChipInitializer);
-                requestRematch();
-            }
-        });
-        overlay.addActor(restartImage);
-
-        // Status on the right of Continue, a way out on the left
-        rematchStatusLabel = new Label("", new Label.LabelStyle(assetStore.listFont, Color.WHITE));
-        overlay.addActor(rematchStatusLabel);
-
-        playersLink = new Label("< Players", new Label.LabelStyle(assetStore.dialogFont, Color.valueOf("#F4B331")));
-        playersLink.pack();
-        playersLink.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                leaveToLobby();
-            }
-        });
-        overlay.addActor(playersLink);
-        updateRematchStatus();
-
-        CommonGameFunctions.showOverlay();
-        overlayShowing = true;
     }
 
     /**
-     * Continue on the result screen: accept the opponent's rematch if they already asked,
+     * One player's name, score and cards in the result panel; the winner's in gold.
+     */
+    private Table finalHand(String name, int score, JsonArray cards, boolean winner) {
+        Table hand = new Table();
+        Label nameLabel = GameText.label(assetStore.chipNameFont, name);
+        nameLabel.setColor(winner ? UiKit.GOLD : Color.WHITE);
+        Label scoreLabel = GameText.label(assetStore.buttonFont, score + (score > 21 ? "  BUST" : ""));
+        scoreLabel.setColor(score > 21 ? LOW_TIME_TINT : winner ? UiKit.GOLD : Color.WHITE);
+        Table row = new Table();
+        for (Card card : cardsOf(cards)) {
+            row.add(new Image(assetStore.getTextureRegion(card))).size(99, 138).padRight(-30);
+        }
+        hand.add(nameLabel).row();
+        hand.add(scoreLabel).padBottom(10).row();
+        hand.add(row).padRight(30);
+        return hand;
+    }
+
+    /**
+     * Rematch on the result panel: accept the opponent's rematch if they already asked,
      * otherwise ask them for one at the same stake.
      */
     private void requestRematch() {
@@ -662,9 +725,9 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         }
 
         awaitingRematch = true;
-        restartImage.clearActions();
-        restartImage.setScale(1f);
-        restartImage.getColor().a = 0.5f;
+        rematchButton.clearActions();
+        rematchButton.setScale(1f);
+        rematchButton.setDisabled(true);
 
         if (incomingRematchId != null) {
             sendRequestAction("accept_request", incomingRematchId);
@@ -742,49 +805,37 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private void updateRematchStatus() {
         if (rematchStatusLabel == null) return;
 
-        // The opponent asked first: Continue becomes Accept
-        setResultButton(incomingRematchId != null);
+        // The opponent asked first: Rematch becomes Accept
+        setRematchButton(incomingRematchId != null);
 
+        String stake = String.format(Locale.US, "%,d", stakeAmount);
         String text;
         if (awaitingRematch && incomingRematchId != null && rematchRequestId == null) {
             text = "Starting...";
         } else if (awaitingRematch) {
-            text = "Waiting for " + opponentName + "...  " + (int) Math.ceil(rematchSecondsLeft);
+            text = "Waiting for " + opponentName + "...  " + (int) Math.ceil(rematchSecondsLeft) + "s";
         } else if (incomingRematchId != null) {
-            text = opponentName + " wants a rematch\nfor " + stakeAmount + "!";
+            text = opponentName + " wants a rematch for " + stake + " chips!";
         } else {
-            text = "Continue asks " + opponentName + "\nfor a rematch at " + stakeAmount;
+            text = "Rematch asks " + opponentName + " to play again for " + stake + " chips";
         }
-
-        playersLink.setPosition(restartImage.getX() - playersLink.getWidth() - 80, restartImage.getY() + restartImage.getHeight() / 2 - playersLink.getHeight() / 2);
         rematchStatusLabel.setText(text);
-        rematchStatusLabel.pack();
-        rematchStatusLabel.setPosition(
-            restartImage.getX() + restartImage.getWidth() + 60,
-            restartImage.getY() + restartImage.getHeight() / 2 - rematchStatusLabel.getHeight() / 2
-        );
     }
 
     /**
-     * Swap the result button between CONTINUE (ask for a rematch) and ACCEPT (take theirs),
-     * keeping it centred at the same height; the two images have different shapes.
+     * Swap the rematch button between REMATCH (ask) and ACCEPT REMATCH (take theirs), which
+     * pulses to catch the eye.
      */
-    private void setResultButton(boolean accept) {
-        if (accept == showingAccept && restartImage.getHeight() > 0) return;
+    private void setRematchButton(boolean accept) {
+        if (accept == showingAccept) return;
         showingAccept = accept;
-
-        TextureRegion region = accept ? acceptTR : restartTR;
-        restartImage.setDrawable(new TextureRegionDrawable(region));
-        restartImage.setSize(RESULT_BUTTON_HEIGHT * region.getRegionWidth() / region.getRegionHeight(), RESULT_BUTTON_HEIGHT);
-        restartImage.setOrigin(restartImage.getWidth() / 2, restartImage.getHeight() / 2);
-        restartImage.setPosition(stage.getWidth() / 2 - restartImage.getWidth() / 2, RESULT_BUTTON_HEIGHT / 2);
-
-        restartImage.clearActions();
-        restartImage.setScale(1f);
-        if (accept) {
-            // Draw the eye to it
-            restartImage.addAction(Actions.forever(Actions.sequence(
-                Actions.scaleTo(1.08f, 1.08f, 0.5f),
+        rematchButton.setText(accept ? "ACCEPT REMATCH" : "REMATCH");
+        rematchButton.setOrigin(Align.center);
+        rematchButton.clearActions();
+        rematchButton.setScale(1f);
+        if (accept && !awaitingRematch) {
+            rematchButton.addAction(Actions.forever(Actions.sequence(
+                Actions.scaleTo(1.06f, 1.06f, 0.5f),
                 Actions.scaleTo(1f, 1f, 0.5f)
             )));
         }
@@ -819,7 +870,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         awaitingRematch = false;
 
         CommonGameFunctions.hideOverlayScreen(true);
-        overlayShowing = false;
+        menuShowing = false;
         // popScreen disposes this screen
         ((Piga21Game) game).popScreen();
     }
@@ -834,11 +885,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         }
 
         if (backPressedAt >= 0 && elapsed - backPressedAt <= BACK_PRESS_WINDOW_SECONDS) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "end_game");
-            data.put("game_id", gameId);
-            webSocketHandler.sendMessage(new Gson().toJson(data));
-            // The server replies with game_over, which shows the result
+            forfeit();
             return;
         }
 
@@ -877,10 +924,8 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
     @Override
     public boolean onBack() {
-        if (!gameOver && CommonGameFunctions.isOverlayShowing()) {
-            // The settings menu, not the result dialog
-            CommonGameFunctions.hideOverlayScreen();
-            overlayShowing = false;
+        if (!gameOver && menuShowing) {
+            closeMenu();
         } else {
             // Leaves after the game, or asks to confirm the forfeit mid-game
             handleBack();
