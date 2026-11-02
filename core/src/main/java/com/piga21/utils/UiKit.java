@@ -48,6 +48,43 @@ public class UiKit {
     }
 
     /**
+     * A stake card on the chips screen; the selected one gets a gold frame.
+     */
+    public static Drawable stakeCard(boolean selected) {
+        return selected
+            ? padded(rounded("stakeSelected", new Color(0.96f, 0.7f, 0.19f, 0.16f), GOLD, 28, 4), 26, 22)
+            : padded(rounded("stake", new Color(0.12f, 0.01f, 0.01f, 0.45f), new Color(1, 1, 1, 0.14f), 28, 2), 26, 22);
+    }
+
+    /**
+     * Dark strip behind the top bar.
+     */
+    public static Drawable bar() {
+        return rounded("bar", new Color(0.1f, 0.01f, 0.01f, 0.72f), null, 1, 0);
+    }
+
+    /**
+     * A thin gold rule, e.g. under the top bar.
+     */
+    public static Drawable rule() {
+        return rounded("rule", new Color(0.96f, 0.7f, 0.19f, 0.55f), null, 1, 0);
+    }
+
+    /**
+     * Rounded chip for small pieces of status, like the points balance.
+     */
+    public static Drawable pill() {
+        return padded(rounded("pill", new Color(0.18f, 0.02f, 0.02f, 0.88f), GOLD, 34, 3), 40, 12);
+    }
+
+    /**
+     * A filled circle with a ring, e.g. the player's initial.
+     */
+    public static Drawable circle(String key, Color fill, Color ring, int radius, int ringWidth) {
+        return rounded(key, fill, ring, radius, ringWidth);
+    }
+
+    /**
      * A button that doesn't pass its taps on to whatever it sits in (e.g. a tappable row).
      */
     public static TextButton button(AssetStore assetStore, String text, Style style, Runnable onClick) {

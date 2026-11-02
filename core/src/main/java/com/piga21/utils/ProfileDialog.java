@@ -6,11 +6,15 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.Align;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
+import java.util.Locale;
 
 import com.piga21.AssetStore;
 
@@ -35,8 +39,7 @@ public class ProfileDialog {
         Table table = new Table();
         table.setBackground(UiKit.panel());
 
-        Image avatar = new Image(assetStore.otherComponents.findRegion("avatar"));
-        table.add(avatar).size(130, 130).padBottom(10).colspan(2).row();
+        table.add(initialBadge(assetStore, displayName(player))).size(130, 130).padBottom(10).colspan(2).row();
         table.add(GameText.title(assetStore, displayName(player))).padBottom(status != null ? 4 : 30).colspan(2).row();
         if (status != null) {
             Label statusLabel = GameText.label(assetStore.listFont, status);
@@ -48,11 +51,11 @@ public class ProfileDialog {
         addRow(table, assetStore, "Nickname", text(player, "nick_name", "Not set"));
         if (own) {
             addRow(table, assetStore, "Email", text(player, "email", "-"));
-            addRow(table, assetStore, "Chips", text(player, "balance", "0"));
+            addRow(table, assetStore, "Chips", count(player, "balance"));
         }
         addRow(table, assetStore, "Rank", player.has("rank") && !player.get("rank").isJsonNull()
             ? "#" + player.get("rank").getAsInt() : "Unranked");
-        addRow(table, assetStore, "Chips won", text(player, "total_points", "0"));
+        addRow(table, assetStore, "Chips won", count(player, "total_points"));
         addRow(table, assetStore, "Record", "Won " + text(player, "total_wins", "0")
             + "  ·  Lost " + text(player, "total_losses", "0")
             + "  ·  Tied " + text(player, "total_draws", "0"));
@@ -104,6 +107,24 @@ public class ProfileDialog {
     public static String displayName(JsonObject player) {
         String nick = text(player, "nick_name", null);
         return nick != null && !nick.isEmpty() ? nick : text(player, "full_name", text(player, "name", "Player"));
+    }
+
+    /**
+     * The first letter of the name in a gold circle (130 across), as in the main menu.
+     */
+    public static Stack initialBadge(AssetStore assetStore, String name) {
+        Stack badge = new Stack();
+        badge.add(new Image(UiKit.circle("avatarBadgeLarge", UiKit.GOLD, UiKit.GOLD_DARK, 65, 6)));
+        Label initial = GameText.label(assetStore.titleFont, name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(Locale.US));
+        initial.setColor(UiKit.BUTTON_TEXT);
+        initial.setAlignment(Align.center);
+        badge.add(initial);
+        return badge;
+    }
+
+    private static String count(JsonObject player, String key) {
+        JsonElement value = player.get(key);
+        return value == null || value.isJsonNull() ? "0" : String.format(Locale.US, "%,d", value.getAsLong());
     }
 
     private static void addRow(Table table, AssetStore assetStore, String label, String value) {
