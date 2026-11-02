@@ -78,6 +78,34 @@ public class UiKit {
     }
 
     /**
+     * Darkens the edges of the screen, drawn stretched over everything behind the content.
+     */
+    public static Drawable vignette() {
+        NinePatchDrawable cached = cache.get("vignette");
+        if (cached != null) return cached;
+
+        int size = 128;
+        Pixmap pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
+        pixmap.setBlending(Pixmap.Blending.None);
+        float centre = (size - 1) / 2f;
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                float dx = (x - centre) / centre, dy = (y - centre) / centre;
+                float t = Math.min(1f, (float) Math.sqrt(dx * dx + dy * dy) / 1.414f);
+                // Clear in the middle, easing to dark at the corners
+                float alpha = 0.85f * t * t * (3 - 2 * t);
+                pixmap.setColor(0.05f, 0f, 0f, alpha);
+                pixmap.drawPixel(x, y);
+            }
+        }
+        Texture texture = new Texture(new PixmapTextureData(pixmap, null, false, false, true));
+        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        NinePatchDrawable drawable = new NinePatchDrawable(new NinePatch(texture, 0, 0, 0, 0));
+        cache.put("vignette", drawable);
+        return drawable;
+    }
+
+    /**
      * A filled circle with a ring, e.g. the player's initial.
      */
     public static Drawable circle(String key, Color fill, Color ring, int radius, int ringWidth) {

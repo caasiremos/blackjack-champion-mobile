@@ -3,33 +3,39 @@ package com.piga21.screens;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
-
-import com.piga21.AssetStore;
-
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.Scaling;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 
+import com.piga21.AssetStore;
 import com.piga21.Piga21Game;
 import com.piga21.auth.GoogleSignInInterface;
+import com.piga21.cards.Card;
 import com.piga21.sockets.WebSocketHandler;
+import com.piga21.utils.CommonUtilInterface;
 import com.piga21.utils.GameText;
 import com.piga21.utils.PlayerApi;
-import com.piga21.utils.CommonUtilInterface;
+import com.piga21.utils.UiKit;
 
 /**
- * Shown at launch: the title art for a moment, then straight into the multiplayer lobby.
+ * Shown at launch: an ace and a king fan out (21), the title and a loading bar fade in, and
+ * once the player is signed in it moves on to the main menu.
  */
 public class SplashScreen implements Screen {
     private static final float SPLASH_SECONDS = 2.5f;
+    private static final float CARD_WIDTH = 230, CARD_HEIGHT = 320;
+    private static final float BAR_WIDTH = 520, BAR_HEIGHT = 8;
 
     Game game;
     ExtendViewport extendViewport;
@@ -38,11 +44,9 @@ public class SplashScreen implements Screen {
     WebSocketHandler webSocketHandler;
     CommonUtilInterface commonUtilInterface;
     Stage stage;
-    TextureRegion cardChipGroupTR, backgroundTR;
-    Image backgroundImage, cardChipGroupImage;
-    Label titleLabel;
 
-    Table mainTable;
+    private final Label statusLabel;
+    private final Image barFill;
 
     private float elapsed = 0f;
     private boolean signInRequested = false;
@@ -58,38 +62,60 @@ public class SplashScreen implements Screen {
         this.commonUtilInterface = commonUtilInterface;
         this.extendViewport = extendViewport;
 
-        // Load textures
-        cardChipGroupTR = assetStore.otherComponents.findRegion("card_chip_group");
-        backgroundTR = assetStore.backgroundComponents.findRegion("background");
+        float width = stage.getWidth(), height = stage.getHeight();
+        float centreX = width / 2;
 
-        // Create images
-        backgroundImage = new Image(backgroundTR);
-        backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
-        backgroundImage.setPosition(0, 0);
+        Image background = assetStore.redBackground();
+        background.setSize(width, height);
+        Image vignette = new Image(UiKit.vignette());
+        vignette.setSize(width, height);
+        vignette.setTouchable(Touchable.disabled);
+        stage.addActor(background);
+        stage.addActor(vignette);
 
-        titleLabel = GameText.label(assetStore.heroFont, "PIGA21");
-        cardChipGroupImage = new Image(cardChipGroupTR);
+        // Ace and king: blackjack, the 21 in the name. They rise from below and fan out.
+        float cardsY = height * 0.57f;
+        addCard(assetStore, Card.ACE_SPADE, centreX - 70, cardsY, 12f, 0f);
+        addCard(assetStore, Card.KING_HEART, centreX + 70, cardsY, -12f, 0.12f);
 
-        // Create and setup main table
-        mainTable = new Table();
-        mainTable.setFillParent(true);
-        mainTable.center();
+        // Title with the tagline between thin gold rules
+        Label title = GameText.label(assetStore.heroFont, "PIGA21");
+        title.setColor(UiKit.GOLD);
+        Label tagline = GameText.label(assetStore.chipTaglineFont, "B L A C K J A C K   ·   O N L I N E");
+        tagline.setColor(UiKit.MUTED);
+        Table taglineRow = new Table();
+        taglineRow.add(new Image(UiKit.rule())).width(90).height(2).padRight(22);
+        taglineRow.add(tagline);
+        taglineRow.add(new Image(UiKit.rule())).width(90).height(2).padLeft(22);
 
-        // The artwork takes whatever height is left, so the title always fits on screen
-        cardChipGroupImage.setScaling(Scaling.fit);
-        mainTable.add(cardChipGroupImage).padTop(40f).width(800).maxHeight(700).expandY().fillY().row();
-        mainTable.add(titleLabel).padTop(10f).padBottom(80f);
+        Table titleBlock = new Table();
+        titleBlock.add(title).row();
+        titleBlock.add(taglineRow).padTop(4);
+        titleBlock.pack();
+        titleBlock.setPosition(centreX - titleBlock.getWidth() / 2, height * 0.2f);
+        titleBlock.getColor().a = 0f;
+        titleBlock.addAction(Actions.sequence(Actions.delay(0.55f), Actions.fadeIn(0.6f, Interpolation.smooth)));
+        stage.addActor(titleBlock);
 
-        // Fade the title art in
-        mainTable.getColor().a = 0f;
-        mainTable.addAction(Actions.fadeIn(0.6f));
+        // Loading bar: a thin track that fills while the splash is up
+        float barY = height * 0.12f;
+        Image barTrack = new Image(UiKit.circle("barTrack", new Color(1, 1, 1, 0.12f), null, 4, 0));
+        barTrack.setBounds(centreX - BAR_WIDTH / 2, barY, BAR_WIDTH, BAR_HEIGHT);
+        barFill = new Image(UiKit.circle("barFill", UiKit.GOLD, null, 4, 0));
+        barFill.setBounds(barTrack.getX(), barY, BAR_HEIGHT, BAR_HEIGHT);
+        statusLabel = GameText.label(assetStore.chipTaglineFont, "Signing you in...");
+        statusLabel.setColor(UiKit.MUTED);
+        statusLabel.setAlignment(Align.center);
+        statusLabel.setWidth(BAR_WIDTH);
+        statusLabel.setPosition(centreX - BAR_WIDTH / 2, barY - statusLabel.getHeight() - 14);
+        for (Actor actor : new Actor[]{barTrack, barFill, statusLabel}) {
+            actor.getColor().a = 0f;
+            actor.addAction(Actions.sequence(Actions.delay(0.9f), Actions.fadeIn(0.4f)));
+            stage.addActor(actor);
+        }
 
-        // Add all actors to stage
-        stage.addActor(backgroundImage);
-        stage.addActor(mainTable);
-
-        // If sign-in was dismissed, a tap on the splash brings the account picker back
-        backgroundImage.addListener(new ClickListener() {
+        // If sign-in was dismissed, a tap anywhere brings the account picker back
+        background.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 if (signInRequested) requestSignIn();
@@ -98,7 +124,25 @@ public class SplashScreen implements Screen {
     }
 
     /**
-     * Online play needs a server account, so the lobby only opens once the player is signed in.
+     * A card that rises into place, turning to its angle in the fan.
+     */
+    private void addCard(AssetStore assetStore, Card card, float centreX, float centreY, float angle, float delay) {
+        Image image = new Image(assetStore.getTextureRegion(card));
+        image.setSize(CARD_WIDTH, CARD_HEIGHT);
+        image.setOrigin(CARD_WIDTH / 2, 0);
+        image.setPosition(centreX - CARD_WIDTH / 2, centreY - CARD_HEIGHT / 2 - 160);
+        image.getColor().a = 0f;
+        image.addAction(Actions.sequence(
+            Actions.delay(delay),
+            Actions.parallel(
+                Actions.fadeIn(0.45f),
+                Actions.moveBy(0, 160, 0.7f, Interpolation.pow3Out),
+                Actions.rotateTo(angle, 0.7f, Interpolation.pow3Out))));
+        stage.addActor(image);
+    }
+
+    /**
+     * Online play needs a server account, so the menu only opens once the player is signed in.
      */
     private void continueToLobby() {
         GoogleSignInInterface auth = ((Piga21Game) game).getAuthInterface();
@@ -108,12 +152,13 @@ public class SplashScreen implements Screen {
         }
 
         leaving = true;
-        // Replace rather than push: back from the lobby exits instead of returning to the splash
+        // Replace rather than push: back from the menu exits instead of returning to the splash
         ((Piga21Game) game).replaceScreen(new GameSettingScreen(game, assetStore, extendViewport, webSocketHandler, commonUtilInterface));
     }
 
     private void requestSignIn() {
         signInRequested = true;
+        statusLabel.setText("Tap anywhere to sign in with Google");
         commonUtilInterface.showToast("Sign in with Google to play online");
         ((Piga21Game) game).getAuthInterface().signIn();
     }
@@ -134,11 +179,20 @@ public class SplashScreen implements Screen {
     @Override
     public void render(float delta) {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        // The first frame's delta includes loading the game, which would skip the splash entirely
+        delta = Math.min(delta, 1 / 30f);
+
+        // Fills over the splash time, then holds near the end while sign-in finishes
+        elapsed += delta;
+        float progress = Math.min(1f, elapsed / SPLASH_SECONDS);
+        float filled = signInRequested ? 0.92f : Interpolation.smooth.apply(progress);
+        barFill.setWidth(Math.max(BAR_HEIGHT, BAR_WIDTH * filled));
+
         stage.act(delta);
         stage.draw();
 
         // Sign-in finishes in the background, so keep checking until we can move on
-        elapsed += delta;
         if (!leaving && elapsed >= SPLASH_SECONDS) {
             continueToLobby();
         }
