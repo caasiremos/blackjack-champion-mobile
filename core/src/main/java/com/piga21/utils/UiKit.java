@@ -35,6 +35,15 @@ public class UiKit {
 
     private static final Map<String, NinePatchDrawable> cache = new HashMap<>();
 
+    /**
+     * Forgets the drawn textures. Call when the game starts: Android can keep the process (and
+     * this cache) alive after the player exits, but the new start has a new GL context, where
+     * the old textures draw as black. They aren't disposed, as their handles are no longer ours.
+     */
+    public static void reset() {
+        cache.clear();
+    }
+
     public static Drawable panel() {
         return padded(rounded("panel", new Color(0.33f, 0.04f, 0.04f, 0.97f), GOLD, 32, 4), 50, 40);
     }

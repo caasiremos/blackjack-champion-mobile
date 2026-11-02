@@ -14,6 +14,7 @@ import com.piga21.screens.SplashScreen;
 import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.CommonGameFunctions;
 import com.piga21.utils.CommonUtilInterface;
+import com.piga21.utils.UiKit;
 
 /**
  * {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms.
@@ -42,6 +43,10 @@ public class Piga21Game extends Game {
     public void create() {
         // Handle Android back ourselves instead of letting it close the app on every screen
         Gdx.input.setCatchKey(Input.Keys.BACK, true);
+
+        // A reopened game can run in the same process as the last one: drop what belonged to it
+        UiKit.reset();
+        CommonGameFunctions.overlayContainer = null;
 
         orthographicCamera = new OrthographicCamera();
         extendViewport = new ExtendViewport(1920, 1080, orthographicCamera);
