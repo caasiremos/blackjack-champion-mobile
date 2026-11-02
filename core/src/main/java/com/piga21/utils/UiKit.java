@@ -7,13 +7,18 @@ import com.badlogic.gdx.graphics.g2d.NinePatch;
 import com.badlogic.gdx.graphics.glutils.PixmapTextureData;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
+import com.badlogic.gdx.utils.Align;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import com.piga21.AssetStore;
@@ -66,6 +71,13 @@ public class UiKit {
     }
 
     /**
+     * A translucent panel grouping a list, e.g. the lobby's players and leaderboard.
+     */
+    public static Drawable section() {
+        return padded(rounded("section", new Color(0.1f, 0.01f, 0.01f, 0.55f), new Color(1, 1, 1, 0.12f), 30, 2), 30, 26);
+    }
+
+    /**
      * Dark strip behind the top bar.
      */
     public static Drawable bar() {
@@ -112,6 +124,19 @@ public class UiKit {
         NinePatchDrawable drawable = new NinePatchDrawable(new NinePatch(texture, 0, 0, 0, 0));
         cache.put("vignette", drawable);
         return drawable;
+    }
+
+    /**
+     * A player's initial in a small gold circle (72 across), as in the lobby and at the table.
+     */
+    public static Stack initialBadge(AssetStore assetStore, String name) {
+        Stack badge = new Stack();
+        badge.add(new Image(circle("avatarSmall", GOLD, GOLD_DARK, 36, 4)));
+        Label initial = GameText.label(assetStore.buttonFont, name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(Locale.US));
+        initial.setColor(BUTTON_TEXT);
+        initial.setAlignment(Align.center);
+        badge.add(initial);
+        return badge;
     }
 
     /**

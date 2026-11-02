@@ -6,15 +6,17 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.google.gson.Gson;
@@ -23,6 +25,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import com.piga21.AssetStore;
@@ -40,7 +43,12 @@ import com.piga21.utils.ProfileDialog;
 import com.piga21.utils.UiKit;
 import com.piga21.utils.Util;
 
+/**
+ * The lobby: who's online to challenge (left), your stake and chips (middle) and the
+ * leaderboard (right), under a top bar with Back and Share.
+ */
 public class OnlinePlayersScreen implements Screen, BackHandler {
+    private static final float TOP_BAR_HEIGHT = 136;
 
     private final Game game;
     private final AssetStore assetStore;
@@ -50,7 +58,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     private final ExtendViewport extendViewport;
     private String pendingRequestId; // store request ID when message arrives
 
-    private final Skin skin;
     public Label timeCountLabel;
     boolean overlayShowing = false;
 
@@ -58,13 +65,11 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     private String challengedName;
 
     private final Table playersContent = new Table();
-
+    private final Table leaderboardContent = new Table();
     private final Map<String, Boolean> knownPlayers = new HashMap<>(); // Track known players
     private Timer.Task pollingTask;
-    private final TextureRegion avatarTR, chipTR, dividerTR;
-    private TextureRegion goldTR, silverTR, bronzeTR;
-    private final Table leaderboardContent = new Table();
-    private Label balanceLabel;
+    private final TextureRegion goldTR, silverTR, bronzeTR;
+    private Label balanceLabel, onlineCountLabel;
 
 
     public OnlinePlayersScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
@@ -78,80 +83,153 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         this.extendViewport = extendViewport;
         this.stage = new Stage(extendViewport);
 
-        chipTR = assetStore.components.findRegion("chip_250");
-        avatarTR = assetStore.otherComponents.findRegion("avatar");
-        TextureRegion goldTR = assetStore.otherComponents.findRegion("gold");
-        TextureRegion silverTR = assetStore.otherComponents.findRegion("silver");
-        TextureRegion bronzeTR = assetStore.otherComponents.findRegion("bronze");
-        TextureRegion inviteButtonTR = assetStore.otherComponents.findRegion("invite");
-        dividerTR = assetStore.otherComponents.findRegion("divider");
-
+        goldTR = assetStore.otherComponents.findRegion("gold");
+        silverTR = assetStore.otherComponents.findRegion("silver");
+        bronzeTR = assetStore.otherComponents.findRegion("bronze");
 
         Image backgroundImage = assetStore.redBackground();
         backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
         backgroundImage.setPosition(0, 0);
 
-        float screenWidth = stage.getViewport().getWorldWidth();
+        float width = stage.getViewport().getWorldWidth();
+        float sideWidth = width * 0.37f;
 
-        skin = new Skin();
-        skin.add("default", new Label.LabelStyle(assetStore.listFont, Color.WHITE));
-
+        // Online players
+        onlineCountLabel = GameText.label(assetStore.chipTaglineFont, "");
+        onlineCountLabel.setColor(UiKit.MUTED);
         playersContent.top();
-        ScrollPane onlinePlayersScroll = new ScrollPane(playersContent);
-        onlinePlayersScroll.setScrollingDisabled(true, false);
-        onlinePlayersScroll.setFadeScrollBars(false);
+        playersContent.add(muted("Looking for players...")).padTop(60);
+        Table players = section("ONLINE NOW", onlineCountLabel, playersContent);
 
-        Table onlinePlayersWrapper = new Table();
-        onlinePlayersWrapper.add(GameText.title(assetStore, "ONLINE GAMERS")).padBottom(20).row();
-        onlinePlayersWrapper.add(onlinePlayersScroll).width(screenWidth * 0.4f).height(400).top().expand().fill();
-
-        this.goldTR = goldTR;
-        this.silverTR = silverTR;
-        this.bronzeTR = bronzeTR;
+        // Leaderboard
+        Label leaderboardHint = GameText.label(assetStore.chipTaglineFont, "Chips won online");
+        leaderboardHint.setColor(UiKit.MUTED);
         leaderboardContent.top();
-        leaderboardContent.add(new Label("Loading...", skin)).pad(10);
+        leaderboardContent.add(muted("Loading...")).padTop(60);
+        Table leaderboard = section("LEADERBOARD", leaderboardHint, leaderboardContent);
 
-        ScrollPane leaderboardScroll = new ScrollPane(leaderboardContent);
-        leaderboardScroll.setScrollingDisabled(true, false);
-        leaderboardScroll.setFadeScrollBars(false);
+        // Your stake and chips
+        Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "Y O U R   S T A K E");
+        stakeCaption.setColor(UiKit.MUTED);
+        balanceLabel = GameText.label(assetStore.buttonFont, chipsText());
+        balanceLabel.setColor(UiKit.GOLD);
+        Table centre = new Table();
+        centre.add(stakeCaption).padBottom(14).row();
+        centre.add(new ChipBadge(assetStore, ChipBadge.selectedKey(), 300)).row();
+        centre.add(balanceLabel).padTop(28).row();
+        centre.add(muted("chips to play with")).row();
+        Label hint = muted("Tap PLAY to challenge,\ntap a player for their profile");
+        hint.setAlignment(Align.center);
+        centre.add(hint).padTop(40);
 
-        Table leaderboardWrapper = new Table();
-        leaderboardWrapper.top(); // line up with the online players column
-        leaderboardWrapper.add(GameText.title(assetStore, "LEADERBOARD")).padBottom(20).row();
-        leaderboardWrapper.add(leaderboardScroll).width(screenWidth * 0.4f).top();
+        Table body = new Table();
+        body.add(players).width(sideWidth).expandY().fillY();
+        body.add(centre).expand().center();
+        body.add(leaderboard).width(sideWidth).expandY().fillY();
 
-        String selectedChip = ChipBadge.selectedKey();
-        Table centerTable = new Table();
-        centerTable.add(new ChipBadge(assetStore, selectedChip, 330)).row();
-        balanceLabel = new Label(GamePoint.POINTS + new GamePoint().getPoints(), skin);
-        centerTable.add(balanceLabel).padTop(20).row();
-
-        Image inviteButtonImage = new Image(inviteButtonTR);
-        // Invite friends who aren't playing yet (challenging someone online is a tap on their row)
-        inviteButtonImage.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                commonUtilInterface.shareApp("Play Piga21 against me! Download the game and challenge me online.", "Piga21 challenge");
-            }
-        });
-        Table bottomTable = new Table();
-        bottomTable.add(inviteButtonImage).width(300).height(100).padTop(40).padBottom(20);
-        bottomTable.setFillParent(true);
-        bottomTable.bottom();
-
-        Table mainLayout = new Table();
-        mainLayout.setFillParent(true);
-        mainLayout.top().padTop(110); // room for the back button
-
-        mainLayout.add(onlinePlayersWrapper).width(screenWidth * 0.4f).top().padRight(20).expandY().fillY();
-        mainLayout.add(centerTable).width(screenWidth * 0.2f).center().padRight(20).expandY().fillY();
-        mainLayout.add(leaderboardWrapper).width(screenWidth * 0.4f).top().expandY().fillY();
+        Table root = new Table();
+        root.setFillParent(true);
+        root.top();
+        root.add(buildTopBar()).expandX().fillX().height(TOP_BAR_HEIGHT).row();
+        root.add(new Image(UiKit.rule())).expandX().fillX().height(3).row();
+        root.add(body).expand().fill().pad(36, 40, 40, 40);
 
         stage.addActor(backgroundImage);
-        stage.addActor(mainLayout);
-        stage.addActor(bottomTable);
-        Util.addBackButton(stage, assetStore, (Piga21Game) game);
-        addMyProfileButton();
+        stage.addActor(root);
+    }
+
+    /**
+     * Back on the left, the title in the middle, Share on the right.
+     */
+    private Table buildTopBar() {
+        Table bar = new Table();
+        bar.setBackground(UiKit.bar());
+        bar.pad(0, 44, 0, 44);
+
+        Label back = GameText.label(assetStore.buttonFont, "< BACK");
+        back.setColor(UiKit.GOLD);
+        tappable(back, () -> ((Piga21Game) game).goBack());
+
+        Label title = GameText.label(assetStore.titleFont, "PLAY ONLINE");
+
+        // The art is a round share icon followed by a "SHARE" pill; only the icon is used
+        TextureRegion shareArt = assetStore.otherComponents.findRegion("share");
+        Image shareIcon = new Image(new TextureRegion(shareArt, 0, 0, shareArt.getRegionHeight(), shareArt.getRegionHeight()));
+        Label shareText = GameText.label(assetStore.buttonFont, "SHARE");
+        shareText.setColor(UiKit.GOLD);
+        Table share = new Table();
+        share.add(shareIcon).size(84, 84).padRight(16);
+        share.add(shareText);
+        tappable(share, () -> commonUtilInterface.shareApp(
+            "Play Piga21 against me! Download the game and challenge me online.", "Piga21 challenge"));
+
+        Table left = new Table();
+        left.add(back);
+        bar.add(left).left().expandX().uniformX();
+        bar.add(title).center();
+        Table right = new Table();
+        right.add(share);
+        bar.add(right).right().expandX().uniformX();
+        return bar;
+    }
+
+    /**
+     * A titled panel with a scrolling list.
+     */
+    private Table section(String title, Label caption, Table content) {
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setScrollingDisabled(true, false);
+        scroll.setOverscroll(false, true);
+
+        Table header = new Table();
+        Label titleLabel = GameText.label(assetStore.chipNameFont, title);
+        header.add(titleLabel).left().expandX();
+        header.add(caption).right();
+
+        Table section = new Table();
+        section.setBackground(UiKit.section());
+        section.top();
+        section.add(header).expandX().fillX().padBottom(14).row();
+        section.add(new Image(UiKit.rule())).expandX().fillX().height(2).padBottom(18).row();
+        section.add(scroll).expand().fill().top();
+        return section;
+    }
+
+    private Label muted(String text) {
+        Label label = GameText.label(assetStore.listFont, text);
+        label.setColor(UiKit.MUTED);
+        return label;
+    }
+
+    private String chipsText() {
+        return String.format(Locale.US, "%,d", new GamePoint().getPoints());
+    }
+
+    /**
+     * Grows a little while pressed, like the rest of the game's buttons.
+     */
+    private void tappable(Actor actor, Runnable onTap) {
+        actor.setTouchable(Touchable.enabled);
+        if (actor instanceof Group group) group.setTransform(true);
+        actor.addListener(new ClickListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                actor.setOrigin(Align.center);
+                actor.addAction(Actions.scaleTo(1.05f, 1.05f, 0.08f));
+                return super.touchDown(event, x, y, pointer, button);
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                actor.addAction(Actions.scaleTo(1f, 1f, 0.08f));
+                super.touchUp(event, x, y, pointer, button);
+            }
+
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                onTap.run();
+            }
+        });
     }
 
     private void listenToServer() {
@@ -173,10 +251,10 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
         String action = message.has("action") ? message.get("action").getAsString() : "";
         PlayerApi.applyPlayerUpdate(message);
-        balanceLabel.setText(GamePoint.POINTS + new GamePoint().getPoints());
+        balanceLabel.setText(chipsText());
 
         switch (action) {
-            case "online_players" -> populatePlayersList(message.getAsJsonArray("players"), avatarTR, dividerTR, chipTR);
+            case "online_players" -> populatePlayersList(message.getAsJsonArray("players"));
             case "player_profile" -> showPlayerProfile(message);
             case "leaderboard" -> populateLeaderboard(message.getAsJsonArray("players"),
                 message.has("me") && message.get("me").isJsonObject() ? message.getAsJsonObject("me") : null);
@@ -212,77 +290,60 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         boolean meListed = false;
 
         if (players.isEmpty()) {
-            leaderboardContent.add(new Label("No games played yet", skin)).pad(10).row();
+            leaderboardContent.add(muted("No games played yet")).padTop(60).row();
         }
 
         for (int i = 0; i < players.size(); i++) {
             JsonObject player = players.get(i).getAsJsonObject();
             boolean isMe = player.get("id").getAsInt() == myId;
             meListed |= isMe;
-
             addLeaderboardRow(player, isMe);
-            if (i < players.size() - 1 && dividerTR != null) {
-                leaderboardContent.add(new Image(dividerTR)).colspan(3).padTop(4).padBottom(4).width(800).height(5).row();
-            }
         }
 
         if (!meListed && me != null && !me.get("rank").isJsonNull()) {
-            if (dividerTR != null) {
-                leaderboardContent.add(new Image(dividerTR)).colspan(3).padTop(4).padBottom(4).width(800).height(5).row();
-            }
             addLeaderboardRow(me, true);
         }
     }
 
     private void addLeaderboardRow(JsonObject player, boolean isMe) {
         int rank = player.get("rank").getAsInt();
-        Image icon = new Image(switch (rank) {
+        TextureRegion medal = switch (rank) {
             case 1 -> goldTR;
             case 2 -> silverTR;
             case 3 -> bronzeTR;
-            default -> chipTR;
-        });
-
-        String name = (rank > 3 ? "#" + rank + " " : "") + player.get("name").getAsString();
-        Label nameLabel = new Label(name, skin);
-        Label scoreLabel = new Label(String.valueOf(player.get("total_points").getAsInt()), skin);
-        if (isMe) {
-            nameLabel.setColor(Color.valueOf("#F4AD31"));
-            scoreLabel.setColor(Color.valueOf("#F4AD31"));
+            default -> null;
+        };
+        Actor rankCell;
+        if (medal != null) {
+            rankCell = new Image(medal);
+        } else {
+            Label number = GameText.label(assetStore.chipNameFont, "#" + rank);
+            number.setColor(UiKit.MUTED);
+            number.setAlignment(Align.center);
+            rankCell = number;
         }
 
-        Table row = new Table();
-        row.add(icon).pad(10).size(80, 80);
-        row.add(nameLabel).left().pad(10).width(180);
-        row.add(scoreLabel).right().pad(10).width(80);
-        int playerId = player.get("id").getAsInt();
-        row.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (isMe) {
-                    showMyProfile();
-                } else {
-                    requestPlayerProfile(playerId);
-                }
-            }
-        });
-        leaderboardContent.add(row).colspan(3).fillX().row();
-    }
+        String name = player.get("name").getAsString();
+        Label nameLabel = GameText.label(assetStore.messageFont, isMe ? name + "  (you)" : name);
+        nameLabel.setEllipsis(true);
+        if (isMe) nameLabel.setColor(UiKit.GOLD);
+        Label scoreLabel = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", player.get("total_points").getAsInt()));
+        scoreLabel.setColor(UiKit.GOLD);
 
-    private void addMyProfileButton() {
-        Table button = new Table();
-        button.add(new Image(avatarTR)).size(70, 70).padRight(16);
-        button.add(GameText.label(assetStore.dialogFont, "My profile"));
-        button.pack();
-        button.setPosition(stage.getWidth() - button.getWidth() - 40, stage.getHeight() - button.getHeight() - 26);
-        button.setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.enabled);
-        button.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
+        Table row = new Table();
+        row.setBackground(isMe ? UiKit.cardPressed() : UiKit.card());
+        row.add(rankCell).size(64, 64).padRight(18);
+        row.add(nameLabel).left().expandX().fillX().minWidth(0);
+        row.add(scoreLabel).right().padLeft(12);
+        int playerId = player.get("id").getAsInt();
+        tappable(row, () -> {
+            if (isMe) {
                 showMyProfile();
+            } else {
+                requestPlayerProfile(playerId);
             }
         });
-        stage.addActor(button);
+        leaderboardContent.add(row).expandX().fillX().height(96).padBottom(12).row();
     }
 
     /**
@@ -362,88 +423,61 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         }
     }
 
-    private void populatePlayersList(JsonArray playersArray, TextureRegion avatarTR, TextureRegion dividerTR, TextureRegion chipTR) {
-        Gdx.app.log("PLAYERS", "populatePlayersList called with " + playersArray.size() + " players");
+    private void populatePlayersList(JsonArray playersArray) {
         playersContent.clearChildren();
 
         Map<String, Boolean> newKnownPlayers = new HashMap<>();
         int userId = Util.getUserId();
 
-        Gdx.app.log("PLAYERS", "Current user ID: " + userId);
-
         for (int i = 0; i < playersArray.size(); i++) {
             JsonObject player = playersArray.get(i).getAsJsonObject();
-            String name = player.get("name").getAsString();
-            int balance = player.get("balance").getAsInt();
-            int betAmount = player.get("bet_amount").getAsInt();
             int playerId = player.get("id").getAsInt();
+            if (playerId == userId) continue; // not ourselves
 
-            // Skip the current user
-            if (playerId == userId) {
-                Gdx.app.log("PLAYERS", "Skipping current user: " + name + " (ID: " + playerId + ")");
-                continue;
-            }
-
-            Image avatar = new Image(avatarTR);
             String displayName = ProfileDialog.displayName(player);
-            Label nameLabel = new Label(displayName, skin);
+            int betAmount = player.get("bet_amount").getAsInt();
+
+            Label nameLabel = GameText.label(assetStore.messageFont, displayName);
             nameLabel.setEllipsis(true);
+            Label stakeLabel = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Plays for %,d chips", betAmount));
+            stakeLabel.setColor(UiKit.MUTED);
+            Table names = new Table();
+            names.add(nameLabel).left().expandX().fillX().minWidth(0).row();
+            names.add(stakeLabel).left();
+
             // Just the coin: its painted name would be unreadable at this size
             Image chip = new Image(ChipBadge.coinRegion(assetStore, ChipBadge.keyForAmount(betAmount)));
 
-            // The whole card challenges; PROFILE (which doesn't pass its tap on) opens their profile
+            // The row opens their profile; PLAY (which doesn't pass its tap on) challenges them
             Table row = new Table();
             row.setBackground(UiKit.card());
-            row.setTouchable(Touchable.enabled);
-            row.add(avatar).pad(8).size(80, 80);
-            row.add(nameLabel).left().pad(8).width(360);
-            row.add(chip).pad(8).size(96, 78);
-            row.add(UiKit.button(assetStore, "PROFILE", UiKit.Style.SMALL, () -> requestPlayerProfile(playerId)))
-                .height(70).padLeft(12);
+            row.add(UiKit.initialBadge(assetStore, displayName)).size(72, 72).padRight(18);
+            row.add(names).left().expandX().fillX().minWidth(0);
+            row.add(chip).size(74, 60).padLeft(10).padRight(14);
+            row.add(UiKit.button(assetStore, "PLAY", UiKit.Style.PRIMARY, () -> initiateGameRequest(playerId, displayName)))
+                .width(150).height(76);
+            tappable(row, () -> requestPlayerProfile(playerId));
 
-            // Animate if this is a new player
-            if (!knownPlayers.containsKey(name)) {
+            // Fade in players who just came online
+            if (!knownPlayers.containsKey(displayName)) {
                 row.getColor().a = 0f;
                 row.addAction(Actions.fadeIn(0.5f));
             }
 
-            row.addListener(new ClickListener() {
-                @Override
-                public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                    row.setBackground(UiKit.cardPressed());
-                    return super.touchDown(event, x, y, pointer, button);
-                }
-
-                @Override
-                public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                    row.setBackground(UiKit.card());
-                    super.touchUp(event, x, y, pointer, button);
-                }
-
-                @Override
-                public void clicked(InputEvent event, float x, float y) {
-                    initiateGameRequest(playerId, displayName);
-                }
-            });
-
-            playersContent.add(row).colspan(3).fillX().padBottom(14).row();
-            Gdx.app.log("PLAYERS", "Added row for player: " + name);
-
-            newKnownPlayers.put(name, true); // Save new player name
+            playersContent.add(row).expandX().fillX().height(108).padBottom(12).row();
+            newKnownPlayers.put(displayName, true);
         }
 
         // The list can contain only us, which we skip, so check what was actually shown
         if (newKnownPlayers.isEmpty()) {
-            Label empty = new Label("No one else is online right now.\nPlayers will appear here as they join.", skin);
-            empty.setAlignment(com.badlogic.gdx.utils.Align.center);
+            Label empty = muted("No one else is online right now.\nShare Piga21 to bring friends in.");
+            empty.setAlignment(Align.center);
             playersContent.add(empty).padTop(60).row();
         }
+        onlineCountLabel.setText(newKnownPlayers.isEmpty() ? "" : newKnownPlayers.size() + " online");
 
         knownPlayers.clear();
         knownPlayers.putAll(newKnownPlayers);
-
-        Gdx.app.log("PLAYERS", "Final playersContent children: " + playersContent.getChildren().size);
-        Gdx.app.log("PLAYERS", "Final playersContent size: " + playersContent.getWidth() + "x" + playersContent.getHeight());
     }
 
     private void acceptGameRequestDialog(String title, String detail) {
