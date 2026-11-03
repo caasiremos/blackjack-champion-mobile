@@ -679,13 +679,29 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         rematchStatusLabel.setColor(UiKit.SOFT);
         rematchStatusLabel.setAlignment(Align.center);
 
+        // The outcome sets the mood: a warm glow behind the heading and a tinted result capsule
+        Color mood = push ? UiKit.INK : won ? UiKit.GOLD : LOW_TIME_TINT;
+        Table heading = new Table();
+        heading.add(title).row();
+        heading.add(reason).padTop(-2);
+        Table glow = new Table();
+        glow.add(new Image(UiKit.glow("resultGlow" + outcome, new Color(mood.r, mood.g, mood.b, push ? 0.16f : 0.34f)))).size(980, 300);
+        Stack header = new Stack();
+        header.add(glow);
+        header.add(heading);
+
+        Table outcomeBox = new Table();
+        outcomeBox.setBackground(UiKit.tint(outcome, net > 0 ? WIN_COLOR : net < 0 ? LOW_TIME_TINT : UiKit.INK));
+        outcomeBox.add(chipsLabel);
+
         Table panel = new Table();
-        panel.setBackground(UiKit.heroCard());
-        panel.add(title).row();
-        panel.add(reason).padTop(-2).padBottom(28).row();
-        panel.add(hands).width(1180).padBottom(30).row();
-        panel.add(chipsLabel).row();
-        panel.add(pointsLabel).padTop(2).padBottom(32).row();
+        panel.setBackground(UiKit.gradientCard("resultCard", Color.valueOf("#5E0B1C"), Color.valueOf("#1D030A"),
+            new Color(0.96f, 0.7f, 0.19f, 0.6f), 44, 3, 56, 40));
+        panel.add(header).height(150).row();
+        panel.add(new Image(UiKit.fadeRule("resultRule", new Color(mood.r, mood.g, mood.b, 0.7f)))).width(760).height(2).padTop(4).padBottom(30).row();
+        panel.add(hands).width(1180).padBottom(32).row();
+        panel.add(outcomeBox).row();
+        panel.add(pointsLabel).padTop(12).padBottom(32).row();
         panel.add(buttons).row();
         panel.add(rematchStatusLabel).padTop(16).row();
 

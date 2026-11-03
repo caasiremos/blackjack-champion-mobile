@@ -176,6 +176,71 @@ public class UiKit {
     }
 
     /**
+     * A rounded card whose fill fades from top to bottom, with a fine border. The middle slice
+     * holds the whole fade, so it stays smooth at any height.
+     */
+    public static Drawable gradientCard(String key, Color top, Color bottom, Color border, int radius, int borderWidth, float padX, float padY) {
+        NinePatchDrawable cached = cache.get(key);
+        if (cached == null) {
+            int scale = 4, band = 96;
+            int w = radius * 2 + 2, h = radius * 2 + band;
+            Pixmap large = new Pixmap(w * scale, h * scale, Pixmap.Format.RGBA8888);
+            large.setBlending(Pixmap.Blending.None);
+            Color c = new Color();
+            int r = radius * scale, inset = borderWidth * scale;
+            // Border first, then the fading fill one row at a time inside it
+            fillRounded(large, 0, 0, w * scale, h * scale, r, border);
+            Pixmap fill = new Pixmap(w * scale, h * scale, Pixmap.Format.RGBA8888);
+            fill.setBlending(Pixmap.Blending.None);
+            fillRounded(fill, inset, inset, w * scale - 2 * inset, h * scale - 2 * inset, Math.max(0, r - inset), Color.WHITE);
+            for (int y = 0; y < h * scale; y++) {
+                c.set(top).lerp(bottom, y / (float) (h * scale - 1));
+                for (int x = 0; x < w * scale; x++) {
+                    if ((fill.getPixel(x, y) & 0xff) != 0) {
+                        large.setColor(c);
+                        large.drawPixel(x, y);
+                    }
+                }
+            }
+            fill.dispose();
+            Pixmap small = new Pixmap(w, h, Pixmap.Format.RGBA8888);
+            small.setBlending(Pixmap.Blending.None);
+            small.setFilter(Pixmap.Filter.BiLinear);
+            small.drawPixmap(large, 0, 0, w * scale, h * scale, 0, 0, w, h);
+            large.dispose();
+            Texture texture = new Texture(new PixmapTextureData(small, null, false, false, true));
+            texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+            cached = new NinePatchDrawable(new NinePatch(texture, radius, radius, radius, radius));
+            cache.put(key, cached);
+        }
+        return padded(cached, padX, padY);
+    }
+
+    /**
+     * A thin horizontal line that fades out at both ends, e.g. under a heading.
+     */
+    public static Drawable fadeRule(String key, Color color) {
+        NinePatchDrawable cached = cache.get(key);
+        if (cached != null) return cached;
+        int width = 256;
+        Pixmap pixmap = new Pixmap(width, 2, Pixmap.Format.RGBA8888);
+        pixmap.setBlending(Pixmap.Blending.None);
+        for (int x = 0; x < width; x++) {
+            float t = 1 - Math.abs(x - (width - 1) / 2f) / ((width - 1) / 2f);
+            pixmap.setColor(color.r, color.g, color.b, color.a * t);
+            pixmap.drawLine(x, 0, x, 1);
+        }
+        return store(key, pixmap);
+    }
+
+    /**
+     * A rounded capsule tinted with a colour, e.g. behind the points won or lost.
+     */
+    public static Drawable tint(String key, Color color) {
+        return padded(rounded("tint" + key, new Color(color.r, color.g, color.b, 0.12f), new Color(color.r, color.g, color.b, 0.45f), 30, 2), 40, 8);
+    }
+
+    /**
      * A vertical gradient, stretched to whatever it covers.
      */
     public static Drawable gradient(String key, Color top, Color bottom) {
