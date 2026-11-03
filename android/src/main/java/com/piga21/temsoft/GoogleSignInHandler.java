@@ -153,13 +153,8 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
             inProgress = true;
             attemptUserAsked = userAsked;
 
-            FirebaseUser user = mAuth.getCurrentUser();
-            if (user != null) {
-                // Google part already done; only our server account is missing
-                sendUserDataToServer(user);
-            } else {
-                launchCredentialManager();
-            }
+            // Always through Google: the server needs a fresh Google ID token to know who we are
+            launchCredentialManager();
         });
     }
 
@@ -357,7 +352,7 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
                     Log.d(TAG, "signInWithCredential:success");
                     FirebaseUser user = mAuth.getCurrentUser();
                     Log.d(TAG, "signInWithCredential:success" + user.getDisplayName());
-                    sendUserDataToServer(user);
+                    sendUserDataToServer(user, idToken);
 
                     showToast("Welcome: " + user.getDisplayName());
                 } else {
@@ -367,7 +362,11 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
             });
     }
 
-    private void sendUserDataToServer(FirebaseUser user) {
+    /**
+     * The server signs us in only on Google's word: it checks the ID token with Google and takes
+     * the account's email from it, so the token is all we send.
+     */
+    private void sendUserDataToServer(FirebaseUser user, String idToken) {
         if (user == null) {
             retryLater("no firebase user");
             return;
@@ -380,9 +379,7 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         JSONObject jsonBody = new JSONObject();
         try {
-            jsonBody.put("email", user.getEmail());
-            jsonBody.put("name", user.getDisplayName());
-            // Add more fields if needed
+            jsonBody.put("id_token", idToken);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating JSON body", e);
             retryLater("request body");
