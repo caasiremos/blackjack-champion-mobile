@@ -51,6 +51,8 @@ public class AssetStore {
     public BitmapFont heroFont, titleFont, ribbonFont, chipNameFont, chipTaglineFont, messageFont;
     // Plain white (no outline) so UI widgets can colour them: buttons and typed text
     public BitmapFont buttonFont, smallButtonFont, inputFont;
+    // Clean (no outline or shadow) lobby type: big numbers, headings, names and captions
+    public BitmapFont statFont, headingFont, bodyFont, captionFont;
     // Small versions of the hero and tagline fonts with only the letters the splash screen shows
     public BitmapFont splashTitleFont, splashTextFont;
     public static final String SPLASH_TITLE = "PIGA21";
@@ -195,6 +197,10 @@ public class AssetStore {
         font(TEXT_FONT, 28, "#FFFFFF", 0f, 2, OUTLINE_COLOR, f -> listFont = f);
         font(TEXT_FONT, 36, "#FFFFFF", 0f, 2, OUTLINE_COLOR, f -> messageFont = f);
         font(TEXT_FONT, 40, "#FFFFFF", 0f, 0, OUTLINE_COLOR, f -> inputFont = f);
+        font(DISPLAY_FONT, 104, "#FFFFFF", 0f, 0, OUTLINE_COLOR, f -> statFont = f);
+        font(DISPLAY_FONT, 56, "#FFFFFF", 0f, 0, OUTLINE_COLOR, f -> headingFont = f);
+        font(TEXT_FONT, 34, "#FFFFFF", 0f, 0, OUTLINE_COLOR, f -> bodyFont = f);
+        font(TEXT_FONT, 24, "#FFFFFF", 0f, 0, OUTLINE_COLOR, f -> captionFont = f);
 
         // Three workers, each with its own generator (one isn't safe to share between threads):
         // the display fonts, the biggest and slowest, split between two, the text fonts on the third

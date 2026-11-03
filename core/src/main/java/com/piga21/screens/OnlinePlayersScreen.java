@@ -6,7 +6,9 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -16,6 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
@@ -31,9 +34,11 @@ import java.util.Map;
 import com.piga21.AssetStore;
 import com.piga21.BackHandler;
 import com.piga21.Piga21Game;
+import com.piga21.points.GamePoint;
 import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.CommonGameFunctions;
 import com.piga21.utils.CommonUtilInterface;
+import com.piga21.utils.Constants;
 import com.piga21.utils.OverlayContainer;
 import com.piga21.utils.ChipBadge;
 import com.piga21.utils.GameText;
@@ -44,11 +49,12 @@ import com.piga21.utils.Util;
 import com.piga21.wallet.WalletClient;
 
 /**
- * The lobby: who's online to challenge (left), your stake and chips (middle) and the
- * leaderboard (right), under a top bar with Back and Share.
+ * The lobby. Three columns: who's online to challenge (left), your stake card (centre) and this
+ * week's leaderboard with a podium for the top three (right), under a bar with Back and Share.
  */
 public class OnlinePlayersScreen implements Screen, BackHandler {
-    private static final float TOP_BAR_HEIGHT = 136;
+    private static final float TOP_BAR_HEIGHT = 128;
+    private static final float GAP = 30;
 
     private final Game game;
     private final AssetStore assetStore;
@@ -69,7 +75,11 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     private final Map<String, Boolean> knownPlayers = new HashMap<>(); // Track known players
     private Timer.Task pollingTask;
     private final TextureRegion goldTR, silverTR, bronzeTR;
-    private Label balanceLabel, onlineCountLabel;
+    private Label balanceLabel, onlineCountLabel, myNameLabel, myRankLabel;
+    private Table onlineCount;
+    private Cell<Actor> myAvatarCell;
+
+    private final int myStake = ChipBadge.amountOf(ChipBadge.selectedKey());
 
 
     public OnlinePlayersScreen(Game game, AssetStore assetStore, ExtendViewport extendViewport,
@@ -87,119 +97,257 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         silverTR = assetStore.otherComponents.findRegion("silver");
         bronzeTR = assetStore.otherComponents.findRegion("bronze");
 
-        Image backgroundImage = assetStore.redBackground();
-        backgroundImage.setSize(stage.getViewport().getWorldWidth(), stage.getViewport().getWorldHeight());
-        backgroundImage.setPosition(0, 0);
-
         float width = stage.getViewport().getWorldWidth();
-        float sideWidth = width * 0.37f;
+        float height = stage.getViewport().getWorldHeight();
+        addBackground(width, height);
 
-        // Online players
-        onlineCountLabel = GameText.label(assetStore.chipTaglineFont, "");
-        onlineCountLabel.setColor(UiKit.MUTED);
-        playersContent.top();
-        playersContent.add(muted("Looking for players...")).padTop(60);
-        Table players = section("ONLINE NOW", onlineCountLabel, playersContent);
-
-        // Leaderboard
-        Label leaderboardHint = GameText.label(assetStore.chipTaglineFont, "Wins this week");
-        leaderboardHint.setColor(UiKit.MUTED);
-        leaderboardContent.top();
-        leaderboardContent.add(muted("Loading...")).padTop(60);
-        Table leaderboard = section("LEADERBOARD", leaderboardHint, leaderboardContent);
-
-        // Your stake and points
-        Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "Y O U R   S T A K E");
-        stakeCaption.setColor(UiKit.MUTED);
-        balanceLabel = GameText.label(assetStore.buttonFont, pointsText());
-        balanceLabel.setColor(UiKit.GOLD);
-        Table centre = new Table();
-        centre.add(stakeCaption).padBottom(14).row();
-        centre.add(new ChipBadge(assetStore, ChipBadge.selectedKey(), 300)).row();
-        centre.add(balanceLabel).padTop(28).row();
-        centre.add(muted("points to play with")).row();
-        Label minimum = muted(String.format(Locale.US, "Players challenge you for %,d", ChipBadge.amountOf(ChipBadge.selectedKey())));
-        centre.add(minimum).padTop(24).row();
-        Label hint = muted("Tap a player to challenge them,\ntap the leaderboard for profiles");
-        hint.setAlignment(Align.center);
-        centre.add(hint).padTop(40);
+        float sideWidth = width * 0.285f;
+        Table players = buildPlayersPanel();
+        Table centre = buildStakeCard();
+        Table leaderboard = buildLeaderboardPanel();
 
         Table body = new Table();
         body.add(players).width(sideWidth).expandY().fillY();
-        body.add(centre).expand().center();
+        body.add(centre).expand().fill().padLeft(GAP).padRight(GAP);
         body.add(leaderboard).width(sideWidth).expandY().fillY();
 
         Table root = new Table();
         root.setFillParent(true);
         root.top();
-        root.add(buildTopBar()).expandX().fillX().height(TOP_BAR_HEIGHT).row();
-        root.add(new Image(UiKit.rule())).expandX().fillX().height(3).row();
-        root.add(body).expand().fill().pad(36, 40, 40, 40);
-
-        stage.addActor(backgroundImage);
+        root.add(buildTopBar()).expandX().fillX().height(TOP_BAR_HEIGHT).padLeft(44).padRight(44).row();
+        root.add(new Image(UiKit.gradient("hairline", new Color(1, 1, 1, 0.06f), new Color(1, 1, 1, 0.06f)))).expandX().fillX().height(2).padLeft(44).padRight(44).row();
+        root.add(body).expand().fill().pad(GAP, 44, 36, 44);
         stage.addActor(root);
+
+        // The three columns rise in one after another
+        int i = 0;
+        for (Actor column : new Actor[]{players, centre, leaderboard}) {
+            column.getColor().a = 0;
+            column.addAction(Actions.sequence(Actions.delay(0.07f * i++),
+                Actions.parallel(Actions.fadeIn(0.35f), Actions.sequence(Actions.moveBy(0, -24), Actions.moveBy(0, 24, 0.35f, Interpolation.pow2Out)))));
+        }
     }
 
     /**
-     * Back on the left, the title in the middle, Share on the right.
+     * Depth without noise: a burgundy gradient, the game's pattern barely visible on it, a warm
+     * glow behind the stake card and darker edges.
+     */
+    private void addBackground(float width, float height) {
+        Image base = new Image(UiKit.gradient("lobbyBase", Color.valueOf("#4A0914"), Color.valueOf("#1A030B")));
+        base.setSize(width, height);
+        stage.addActor(base);
+
+        Image pattern = assetStore.redBackground();
+        pattern.setSize(width, height);
+        pattern.getColor().a = 0.16f;
+        stage.addActor(pattern);
+
+        Image glow = new Image(UiKit.glow("lobbyGlow", new Color(0.9f, 0.12f, 0.22f, 0.55f)));
+        glow.setSize(width * 0.62f, height * 1.2f);
+        glow.setPosition((width - glow.getWidth()) / 2, (height - glow.getHeight()) / 2 - height * 0.05f);
+        stage.addActor(glow);
+
+        Image vignette = new Image(UiKit.vignette());
+        vignette.setSize(width, height);
+        stage.addActor(vignette);
+    }
+
+    /**
+     * Back and the title on the left, Share on the right.
      */
     private Table buildTopBar() {
-        Table bar = new Table();
-        bar.setBackground(UiKit.bar());
-        bar.pad(0, 44, 0, 44);
+        Stack backIcon = new Stack();
+        backIcon.add(new Image(UiKit.disc("backButton", new Color(0.2f, 0.02f, 0.06f, 0.9f), new Color(0.96f, 0.7f, 0.19f, 0.7f), 0.06f)));
+        Table chevron = new Table();
+        chevron.add(new Image(UiKit.chevronLeft(UiKit.GOLD))).size(40, 40);
+        backIcon.add(chevron);
+        tappable(backIcon, () -> ((Piga21Game) game).goBack());
 
-        Label back = GameText.label(assetStore.buttonFont, "< BACK");
-        back.setColor(UiKit.GOLD);
-        tappable(back, () -> ((Piga21Game) game).goBack());
-
-        Label title = GameText.label(assetStore.titleFont, "PLAY ONLINE");
+        Label title = GameText.label(assetStore.headingFont, "PLAY ONLINE");
+        title.setColor(UiKit.INK);
+        Label subtitle = GameText.label(assetStore.captionFont, "Challenge a player  ·  Climb this week's board");
+        subtitle.setColor(UiKit.SOFT);
+        Table titles = new Table();
+        titles.add(title).left().row();
+        titles.add(subtitle).left().padTop(-4);
 
         // The art is a round share icon followed by a "SHARE" pill; only the icon is used
         TextureRegion shareArt = assetStore.otherComponents.findRegion("share");
         Image shareIcon = new Image(new TextureRegion(shareArt, 0, 0, shareArt.getRegionHeight(), shareArt.getRegionHeight()));
-        Label shareText = GameText.label(assetStore.buttonFont, "SHARE");
+        Label shareText = GameText.label(assetStore.smallButtonFont, "SHARE");
         shareText.setColor(UiKit.GOLD);
         Table share = new Table();
-        share.add(shareIcon).size(84, 84).padRight(16);
-        share.add(shareText);
-        tappable(share, () -> commonUtilInterface.shareApp(
-            "Play Piga21 against me! Download the game and challenge me online.", "Piga21 challenge"));
+        share.setBackground(UiKit.tag("share", UiKit.GOLD));
+        share.add(shareIcon).size(58, 58).padRight(14).padLeft(-8);
+        share.add(shareText).padRight(10);
+        tappable(share, this::shareApp);
 
-        Table left = new Table();
-        left.add(back);
-        bar.add(left).left().expandX().uniformX();
-        bar.add(title).center();
-        Table right = new Table();
-        right.add(share);
-        bar.add(right).right().expandX().uniformX();
+        Table bar = new Table();
+        bar.add(backIcon).size(88, 88).padRight(26);
+        bar.add(titles).left().expandX();
+        bar.add(share).right().height(76);
         return bar;
     }
 
+    private void shareApp() {
+        commonUtilInterface.shareApp(
+            "Play Piga21 against me! Download the game and challenge me online.", "Piga21 challenge");
+    }
+
+    // ---- Online players ----
+
+    private Table buildPlayersPanel() {
+        Image liveDot = new Image(UiKit.disc("liveDot", UiKit.ONLINE, null, 0));
+        liveDot.setOrigin(Align.center);
+        liveDot.addAction(Actions.forever(Actions.sequence(Actions.alpha(0.35f, 0.9f), Actions.alpha(1f, 0.9f))));
+
+        onlineCountLabel = GameText.label(assetStore.captionFont, "");
+        onlineCountLabel.setColor(UiKit.ONLINE);
+        onlineCount = new Table();
+        onlineCount.add(onlineCountLabel);
+        onlineCount.setVisible(false);
+        onlineCount.setBackground(UiKit.tag("online", UiKit.ONLINE));
+
+        Table header = new Table();
+        header.add(liveDot).size(18, 18).padRight(14);
+        header.add(heading("ONLINE NOW")).left().expandX();
+        header.add(onlineCount).right();
+
+        playersContent.top();
+        playersContent.add(soft("Looking for players...")).padTop(80);
+        return panel(header, "Tap a player to challenge them for their stake", playersContent);
+    }
+
+    // ---- Your stake ----
+
     /**
-     * A titled panel with a scrolling list.
+     * Who you are, the stake others challenge you for (with its chip), and your points.
      */
-    private Table section(String title, Label caption, Table content) {
+    private Table buildStakeCard() {
+        String myName = Gdx.app.getPreferences(GamePoint.GAME_PREFS).getString(Constants.PLAYER_NAME, "You");
+        myNameLabel = GameText.label(assetStore.buttonFont, myName);
+        myNameLabel.setColor(UiKit.INK);
+        myNameLabel.setEllipsis(true);
+        myRankLabel = GameText.label(assetStore.captionFont, "Weekly rank loading...");
+        myRankLabel.setColor(UiKit.SOFT);
+
+        Table who = new Table();
+        myAvatarCell = who.add((Actor) UiKit.avatar(assetStore, myName, 84, UiKit.GOLD, true, true)).size(84, 84).padRight(22);
+        Table names = new Table();
+        names.add(myNameLabel).left().minWidth(0).width(420).row();
+        names.add(myRankLabel).left();
+        who.add(names).left().expandX();
+        tappable(who, this::showMyProfile);
+
+        Label caption = GameText.label(assetStore.captionFont, "Y O U R   S T A K E");
+        caption.setColor(UiKit.GOLD);
+
+        // The chip on a soft gold halo
+        String key = ChipBadge.selectedKey();
+        ChipBadge chip = new ChipBadge(assetStore, key, 240);
+        chip.setSelected(true);
+        Stack chipStack = new Stack();
+        Table halo = new Table();
+        halo.add(new Image(UiKit.glow("chipGlow", new Color(0.96f, 0.7f, 0.19f, 0.4f)))).size(460, 380);
+        chipStack.add(halo);
+        chipStack.add(chip);
+        chip.coin.addAction(Actions.forever(Actions.sequence(
+            Actions.moveBy(0, 8, 1.6f, Interpolation.sine), Actions.moveBy(0, -8, 1.6f, Interpolation.sine))));
+
+        Label stakeValue = GameText.label(assetStore.statFont, String.format(Locale.US, "%,d", myStake));
+        stakeValue.setColor(UiKit.GOLD);
+        Label stakeUnit = GameText.label(assetStore.buttonFont, "POINTS");
+        stakeUnit.setColor(UiKit.SOFT);
+        Table stake = new Table();
+        stake.add(stakeValue).bottom();
+        stake.add(stakeUnit).bottom().padLeft(14).padBottom(18);
+
+        Label explain = GameText.label(assetStore.bodyFont,
+            String.format(Locale.US, "Players can challenge you for %,d points", myStake));
+        explain.setColor(UiKit.INK);
+
+        balanceLabel = GameText.label(assetStore.headingFont, pointsText());
+        balanceLabel.setColor(UiKit.INK);
+        Table stats = new Table();
+        stats.add(statBox("POINTS AVAILABLE", balanceLabel)).expandX().fillX().uniformX().padRight(18);
+        Label fee = GameText.label(assetStore.headingFont, String.format(Locale.US, "%,d", ChipBadge.feeFor(myStake)));
+        fee.setColor(UiKit.INK);
+        stats.add(statBox("SERVICE FEE PER GAME", fee)).expandX().fillX().uniformX();
+
+        Table card = new Table();
+        card.setBackground(UiKit.heroCard());
+        card.top();
+        card.add(who).expandX().fillX().row();
+        card.add(new Image(UiKit.gradient("cardRule", new Color(1, 1, 1, 0.1f), new Color(1, 1, 1, 0.1f)))).expandX().fillX().height(2).padTop(22).padBottom(18).row();
+        card.add(caption).row();
+        card.add(chipStack).height(330).padTop(-4).row();
+        card.add(stake).padTop(-6).row();
+        card.add(explain).padTop(-4).row();
+        card.add(stats).expandX().fillX().expandY().bottom().padTop(22);
+        return card;
+    }
+
+    private Table statBox(String title, Label value) {
+        Label caption = GameText.label(assetStore.captionFont, title);
+        caption.setColor(UiKit.SOFT);
+        Table box = new Table();
+        box.setBackground(UiKit.statTile());
+        box.add(caption).left().row();
+        box.add(value).left().padTop(-2);
+        return box;
+    }
+
+    // ---- Leaderboard ----
+
+    private Table buildLeaderboardPanel() {
+        Label week = GameText.label(assetStore.captionFont, "THIS WEEK");
+        week.setColor(UiKit.GOLD);
+        Table weekTag = new Table();
+        weekTag.setBackground(UiKit.tag("week", UiKit.GOLD));
+        weekTag.add(week);
+
+        Table header = new Table();
+        header.add(new Image(goldTR)).size(34, 37).padRight(14);
+        header.add(heading("LEADERBOARD")).left().expandX();
+        header.add(weekTag).right();
+
+        leaderboardContent.top();
+        leaderboardContent.add(soft("Loading...")).padTop(80);
+        return panel(header, "Most games won since Monday", leaderboardContent);
+    }
+
+    // ---- Shared pieces ----
+
+    /**
+     * A dark surface with a header, a one-line explanation and a scrolling list.
+     */
+    private Table panel(Table header, String explanation, Table content) {
         ScrollPane scroll = new ScrollPane(content);
         scroll.setScrollingDisabled(true, false);
         scroll.setOverscroll(false, true);
 
-        Table header = new Table();
-        Label titleLabel = GameText.label(assetStore.chipNameFont, title);
-        header.add(titleLabel).left().expandX();
-        header.add(caption).right();
+        Label line = GameText.label(assetStore.captionFont, explanation);
+        line.setColor(UiKit.SOFT);
 
-        Table section = new Table();
-        section.setBackground(UiKit.section());
-        section.top();
-        section.add(header).expandX().fillX().padBottom(14).row();
-        section.add(new Image(UiKit.rule())).expandX().fillX().height(2).padBottom(18).row();
-        section.add(scroll).expand().fill().top();
-        return section;
+        Table panel = new Table();
+        panel.setBackground(UiKit.surface());
+        panel.top();
+        panel.add(header).expandX().fillX().row();
+        panel.add(line).left().padTop(4).padBottom(20).row();
+        panel.add(scroll).expand().fill().top();
+        return panel;
     }
 
-    private Label muted(String text) {
-        Label label = GameText.label(assetStore.listFont, text);
-        label.setColor(UiKit.MUTED);
+    private Label heading(String text) {
+        Label label = GameText.label(assetStore.smallButtonFont, text);
+        label.setColor(UiKit.INK);
+        return label;
+    }
+
+    private Label soft(String text) {
+        Label label = GameText.label(assetStore.bodyFont, text);
+        label.setColor(UiKit.SOFT);
+        label.setAlignment(Align.center);
         return label;
     }
 
@@ -225,6 +373,36 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             @Override
             public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
                 actor.addAction(Actions.scaleTo(1f, 1f, 0.08f));
+                super.touchUp(event, x, y, pointer, button);
+            }
+
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                onTap.run();
+            }
+        });
+    }
+
+    /**
+     * A list row: sinks slightly and lights up while pressed, so it's clear it was tapped.
+     */
+    private void pressable(Table row, Drawable normal, Runnable onTap) {
+        row.setBackground(normal);
+        row.setTouchable(Touchable.enabled);
+        row.setTransform(true);
+        row.addListener(new ClickListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                row.setOrigin(Align.center);
+                row.setBackground(UiKit.tilePressed());
+                row.addAction(Actions.scaleTo(0.98f, 0.98f, 0.06f));
+                return super.touchDown(event, x, y, pointer, button);
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                row.setBackground(normal);
+                row.addAction(Actions.scaleTo(1f, 1f, 0.1f));
                 super.touchUp(event, x, y, pointer, button);
             }
 
@@ -270,7 +448,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
                 int amount = message.has("amount") ? message.get("amount").getAsInt() : 0;
                 int fee = message.has("fee") ? message.get("fee").getAsInt() : ChipBadge.feeFor(amount);
                 boolean rematch = message.has("rematch") && message.get("rematch").getAsBoolean();
-                acceptGameRequestDialog(rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points  ·  Fee: %,d", amount, fee));
+                acceptGameRequestDialog(fromName, rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points  ·  Fee: %,d", amount, fee));
             }
             case "request_sent" -> {
                 outgoingRequestId = message.get("request_id").getAsString();
@@ -288,66 +466,156 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     /**
-     * Server-ranked board: games won this week, ties going to whoever got there first.
-     * If you're not in the top list, your own rank is shown underneath.
+     * Server-ranked board: games won this week, ties going to whoever got there first. The top
+     * three stand on a podium; the rest are rows, and you're added underneath if not listed.
      */
     private void populateLeaderboard(JsonArray players, JsonObject me) {
         leaderboardContent.clearChildren();
         int myId = Util.getUserId();
-        boolean meListed = false;
+        updateMe(me);
 
         if (players.isEmpty()) {
-            leaderboardContent.add(muted("No wins yet this week")).padTop(60).row();
+            leaderboardContent.add(new Image(goldTR)).size(70, 76).padTop(70).row();
+            leaderboardContent.add(soft("No wins yet this week")).padTop(18).row();
+            Label hint = GameText.label(assetStore.captionFont, "Win a game to take first place");
+            hint.setColor(UiKit.SOFT);
+            leaderboardContent.add(hint).padTop(6).row();
+            return;
         }
+
+        // 2nd, 1st, 3rd, so first place stands in the middle
+        JsonObject[] top = new JsonObject[3];
+        boolean meListed = false;
+        for (int i = 0; i < players.size(); i++) {
+            JsonObject player = players.get(i).getAsJsonObject();
+            meListed |= player.get("id").getAsInt() == myId;
+            int rank = player.get("rank").getAsInt();
+            if (rank <= 3) top[rank - 1] = player;
+        }
+        Table podium = new Table();
+        podium.bottom();
+        podium.add(podiumPlace(top[1], 2, myId)).expandX().fillX().uniformX().bottom();
+        podium.add(podiumPlace(top[0], 1, myId)).expandX().fillX().uniformX().bottom().padLeft(14).padRight(14);
+        podium.add(podiumPlace(top[2], 3, myId)).expandX().fillX().uniformX().bottom();
+        leaderboardContent.add(podium).expandX().fillX().padBottom(18).row();
 
         for (int i = 0; i < players.size(); i++) {
             JsonObject player = players.get(i).getAsJsonObject();
-            boolean isMe = player.get("id").getAsInt() == myId;
-            meListed |= isMe;
-            addLeaderboardRow(player, isMe);
+            if (player.get("rank").getAsInt() > 3) addLeaderboardRow(player, player.get("id").getAsInt() == myId);
         }
-
         if (!meListed && me != null && !me.get("rank").isJsonNull()) {
             addLeaderboardRow(me, true);
         }
     }
 
-    private void addLeaderboardRow(JsonObject player, boolean isMe) {
-        int rank = player.get("rank").getAsInt();
-        TextureRegion medal = switch (rank) {
-            case 1 -> goldTR;
-            case 2 -> silverTR;
-            case 3 -> bronzeTR;
-            default -> null;
-        };
-        Actor rankCell;
-        if (medal != null) {
-            rankCell = new Image(medal);
-        } else {
-            Label number = GameText.label(assetStore.chipNameFont, "#" + rank);
-            number.setColor(UiKit.MUTED);
-            number.setAlignment(Align.center);
-            rankCell = number;
+    /**
+     * Your name and weekly rank on the stake card, from the leaderboard's "me".
+     */
+    private void updateMe(JsonObject me) {
+        if (me == null) return;
+        // The board's name is the nickname if there is one, as other players see it
+        String name = me.has("name") && !me.get("name").isJsonNull() ? me.get("name").getAsString() : myNameLabel.getText().toString();
+        myNameLabel.setText(name);
+        myAvatarCell.setActor(UiKit.avatar(assetStore, name, 84, UiKit.GOLD, true, true));
+        boolean ranked = me.has("rank") && !me.get("rank").isJsonNull();
+        int wins = me.has("week_wins") ? me.get("week_wins").getAsInt() : 0;
+        myRankLabel.setText(ranked
+            ? String.format(Locale.US, "Rank #%d this week  ·  %d %s", me.get("rank").getAsInt(), wins, wins == 1 ? "win" : "wins")
+            : "No wins yet this week");
+    }
+
+    private static Color medalColor(int rank) {
+        return rank == 1 ? UiKit.GOLD : rank == 2 ? UiKit.SILVER : UiKit.BRONZE;
+    }
+
+    /**
+     * One podium place: medal, avatar, name, wins, and a pedestal whose height is its rank.
+     */
+    private Table podiumPlace(JsonObject player, int rank, int myId) {
+        Color color = medalColor(rank);
+        TextureRegion medal = rank == 1 ? goldTR : rank == 2 ? silverTR : bronzeTR;
+        float avatarSize = rank == 1 ? 112 : 88;
+        float pedestalHeight = rank == 1 ? 112 : rank == 2 ? 82 : 62;
+
+        Label number = GameText.label(assetStore.headingFont, String.valueOf(rank));
+        number.setColor(color);
+        Table pedestal = new Table();
+        pedestal.setBackground(UiKit.pedestal(String.valueOf(rank), color));
+        pedestal.add(number);
+
+        Table place = new Table();
+        place.bottom();
+        if (player == null) {
+            // Nobody there yet
+            Stack empty = new Stack();
+            empty.add(new Image(UiKit.disc("emptySeat", new Color(1, 1, 1, 0.03f), new Color(1, 1, 1, 0.12f), 0.05f)));
+            place.add(empty).size(avatarSize, avatarSize).padBottom(10).row();
+            Label open = GameText.label(assetStore.captionFont, "Open");
+            open.setColor(UiKit.SOFT);
+            place.add(open).padBottom(10).row();
+            place.add(pedestal).expandX().fillX().height(pedestalHeight);
+            return place;
         }
 
         String name = player.get("name").getAsString();
-        Label nameLabel = GameText.label(assetStore.messageFont, isMe ? name + "  (you)" : name);
+        boolean isMe = player.get("id").getAsInt() == myId;
+        int wins = player.has("week_wins") ? player.get("week_wins").getAsInt() : 0;
+
+        Label nameLabel = GameText.label(assetStore.bodyFont, name);
+        nameLabel.setColor(isMe ? UiKit.GOLD : UiKit.INK);
         nameLabel.setEllipsis(true);
-        if (isMe) nameLabel.setColor(UiKit.GOLD);
+        nameLabel.setAlignment(Align.center);
+        Label winsLabel = GameText.label(assetStore.captionFont, String.format(Locale.US, "%d %s", wins, wins == 1 ? "WIN" : "WINS"));
+        winsLabel.setColor(color);
+
+        place.add(new Image(medal)).size(62, 67).padBottom(-20).row();
+        place.add(UiKit.avatar(assetStore, name, avatarSize, color, isMe, false)).size(avatarSize, avatarSize).row();
+        place.add(nameLabel).expandX().fillX().minWidth(0).padTop(8).row();
+        place.add(winsLabel).padBottom(10).row();
+        place.add(pedestal).expandX().fillX().height(pedestalHeight);
+
+        int playerId = player.get("id").getAsInt();
+        tappable(place, () -> openProfile(playerId, isMe));
+        return place;
+    }
+
+    private void addLeaderboardRow(JsonObject player, boolean isMe) {
+        int rank = player.get("rank").getAsInt();
+        String name = player.get("name").getAsString();
+        int wins = player.has("week_wins") ? player.get("week_wins").getAsInt() : 0;
+
+        Label rankLabel = GameText.label(assetStore.buttonFont, "#" + rank);
+        rankLabel.setColor(isMe ? UiKit.GOLD : UiKit.SOFT);
+        Label nameLabel = GameText.label(assetStore.bodyFont, name);
+        nameLabel.setColor(isMe ? UiKit.GOLD : UiKit.INK);
+        nameLabel.setEllipsis(true);
+        Label winsLabel = GameText.label(assetStore.captionFont, String.format(Locale.US, "%d %s", wins, wins == 1 ? "WIN" : "WINS"));
+        winsLabel.setColor(UiKit.SOFT);
 
         Table row = new Table();
-        row.setBackground(isMe ? UiKit.cardPressed() : UiKit.card());
-        row.add(rankCell).size(64, 64).padRight(18);
+        row.add(rankLabel).width(78).left();
+        row.add(UiKit.avatar(assetStore, name, 60, isMe ? UiKit.GOLD : UiKit.SOFT, isMe, false)).size(60, 60).padRight(16);
         row.add(nameLabel).left().expandX().fillX().minWidth(0);
+        if (isMe) {
+            Label you = GameText.label(assetStore.captionFont, "YOU");
+            you.setColor(UiKit.GOLD);
+            Table tag = new Table();
+            tag.setBackground(UiKit.tag("you", UiKit.GOLD));
+            tag.add(you);
+            row.add(tag).padLeft(10).padRight(14);
+        }
+        row.add(winsLabel).right();
         int playerId = player.get("id").getAsInt();
-        tappable(row, () -> {
-            if (isMe) {
-                showMyProfile();
-            } else {
-                requestPlayerProfile(playerId);
-            }
-        });
-        leaderboardContent.add(row).expandX().fillX().height(96).padBottom(12).row();
+        pressable(row, isMe ? UiKit.tileMe() : UiKit.tile(), () -> openProfile(playerId, isMe));
+        leaderboardContent.add(row).expandX().fillX().height(88).padBottom(10).row();
+    }
+
+    private void openProfile(int playerId, boolean isMe) {
+        if (isMe) {
+            showMyProfile();
+        } else {
+            requestPlayerProfile(playerId);
+        }
     }
 
     /**
@@ -442,25 +710,34 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             String displayName = ProfileDialog.displayName(player);
             int betAmount = player.get("bet_amount").getAsInt();
 
-            Label nameLabel = GameText.label(assetStore.messageFont, displayName);
+            Label nameLabel = GameText.label(assetStore.bodyFont, displayName);
+            nameLabel.setColor(UiKit.INK);
             nameLabel.setEllipsis(true);
+            Label status = GameText.label(assetStore.captionFont, "Available now");
+            status.setColor(UiKit.ONLINE);
+            Table names = new Table();
+            names.add(nameLabel).left().expandX().fillX().minWidth(0).row();
+            names.add(status).left();
 
-            // Their chosen stake, on the right
+            // Their chosen stake: what a challenge to them is played for
             Label stakeAmount = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", betAmount));
             stakeAmount.setColor(UiKit.GOLD);
-            Label stakeCaption = GameText.label(assetStore.chipTaglineFont, "STAKE");
-            stakeCaption.setColor(UiKit.MUTED);
+            Label stakeCaption = GameText.label(assetStore.captionFont, "STAKE");
+            stakeCaption.setColor(UiKit.SOFT);
             Table stake = new Table();
             stake.add(stakeAmount).right().row();
-            stake.add(stakeCaption).right();
+            stake.add(stakeCaption).right().padTop(-6);
 
-            // Tapping the row challenges them for their stake
+            Image go = new Image(UiKit.chevronLeft(UiKit.GOLD));
+            go.setOrigin(Align.center);
+            go.setScaleX(-1); // points right
+
             Table row = new Table();
-            row.setBackground(UiKit.card());
-            row.add(UiKit.initialBadge(assetStore, displayName)).size(72, 72).padRight(18);
-            row.add(nameLabel).left().expandX().fillX().minWidth(0);
-            row.add(stake).right().padLeft(16).padRight(8);
-            tappable(row, () -> challenge(playerId, displayName, betAmount));
+            row.add(UiKit.avatar(assetStore, displayName, 76, UiKit.GOLD, false, true)).size(76, 76).padRight(20);
+            row.add(names).left().expandX().fillX().minWidth(0);
+            row.add(stake).right().padLeft(14).padRight(16);
+            row.add(go).size(26, 26).padRight(8);
+            pressable(row, UiKit.tile(), () -> challenge(playerId, displayName, betAmount));
 
             // Fade in players who just came online
             if (!knownPlayers.containsKey(displayName)) {
@@ -468,24 +745,35 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
                 row.addAction(Actions.fadeIn(0.5f));
             }
 
-            playersContent.add(row).expandX().fillX().height(108).padBottom(12).row();
+            playersContent.add(row).expandX().fillX().height(118).padBottom(12).row();
             newKnownPlayers.put(displayName, true);
         }
 
         // The list can contain only us, which we skip, so check what was actually shown
         if (newKnownPlayers.isEmpty()) {
-            Label empty = muted("No one else is online right now.\nShare Piga21 to bring friends in.");
-            empty.setAlignment(Align.center);
-            playersContent.add(empty).padTop(60).row();
+            Stack seat = new Stack();
+            seat.add(new Image(UiKit.disc("emptySeat", new Color(1, 1, 1, 0.03f), new Color(1, 1, 1, 0.12f), 0.05f)));
+            Label dash = GameText.label(assetStore.headingFont, "?");
+            dash.setColor(new Color(1, 1, 1, 0.3f));
+            dash.setAlignment(Align.center);
+            seat.add(dash);
+            playersContent.add(seat).size(110, 110).padTop(60).row();
+            playersContent.add(soft("No one else is online right now")).padTop(22).row();
+            Label hint = GameText.label(assetStore.captionFont, "Share Piga21 and challenge your friends");
+            hint.setColor(UiKit.SOFT);
+            playersContent.add(hint).padTop(6).row();
+            playersContent.add(UiKit.button(assetStore, "SHARE PIGA21", UiKit.Style.SMALL, this::shareApp)).height(76).padTop(28).row();
         }
-        onlineCountLabel.setText(newKnownPlayers.isEmpty() ? "" : newKnownPlayers.size() + " online");
+        int count = newKnownPlayers.size();
+        onlineCountLabel.setText(count + " AVAILABLE");
+        onlineCount.setVisible(count > 0);
 
         knownPlayers.clear();
         knownPlayers.putAll(newKnownPlayers);
     }
 
-    private void acceptGameRequestDialog(String title, String detail) {
-        timeCountLabel = GameText.label(assetStore.titleFont, String.valueOf(Util.CHALLENGE_SECONDS));
+    private void acceptGameRequestDialog(String fromName, String title, String detail) {
+        timeCountLabel = GameText.label(assetStore.headingFont, String.valueOf(Util.CHALLENGE_SECONDS));
         timeCountLabel.setColor(UiKit.GOLD);
 
         Table buttons = new Table();
@@ -495,7 +783,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         })).width(300).height(100).padRight(40);
         buttons.add(UiKit.button(assetStore, "ACCEPT", UiKit.Style.PRIMARY, this::acceptInitiatedGame)).width(300).height(100);
 
-        showRequestPanel(title, detail, buttons);
+        showRequestPanel(fromName, title, detail, buttons);
 
         // Not accepted in time counts as a decline
         final String requestId = pendingRequestId;
@@ -509,18 +797,28 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     /**
-     * Challenge dialogs share one look: title, detail line, countdown, buttons.
+     * Challenge dialogs share one look: the other player's avatar, title, detail line, a
+     * countdown in a ring, and the buttons.
      */
-    private void showRequestPanel(String title, String detail, Table buttons) {
+    private void showRequestPanel(String otherName, String title, String detail, Table buttons) {
         OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage, 0.8f);
 
+        Stack countdown = new Stack();
+        countdown.add(new Image(UiKit.disc("countdownRing", new Color(0, 0, 0, 0.3f), UiKit.GOLD, 0.07f)));
+        timeCountLabel.setAlignment(Align.center);
+        countdown.add(timeCountLabel);
+
+        Label titleLabel = GameText.label(assetStore.headingFont, title);
+        titleLabel.setColor(UiKit.INK);
+        Label detailLabel = GameText.label(assetStore.bodyFont, detail);
+        detailLabel.setColor(UiKit.SOFT);
+
         Table panel = new Table();
-        panel.setBackground(UiKit.panel());
-        panel.add(GameText.title(assetStore, title)).padBottom(10).row();
-        Label detailLabel = GameText.label(assetStore.messageFont, detail);
-        detailLabel.setColor(UiKit.MUTED);
-        panel.add(detailLabel).padBottom(20).row();
-        panel.add(timeCountLabel).padBottom(30).row();
+        panel.setBackground(UiKit.heroCard());
+        panel.add(UiKit.avatar(assetStore, otherName, 112, UiKit.GOLD, false, true)).size(112, 112).padBottom(18).row();
+        panel.add(titleLabel).padBottom(6).row();
+        panel.add(detailLabel).padBottom(24).row();
+        panel.add(countdown).size(104, 104).padBottom(30).row();
         panel.add(buttons).row();
         panel.pack();
         panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() / 2 - panel.getHeight() / 2);
@@ -589,7 +887,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     private void sendGameRequestDialog() {
-        timeCountLabel = GameText.label(assetStore.titleFont, String.valueOf(Util.CHALLENGE_SECONDS));
+        timeCountLabel = GameText.label(assetStore.headingFont, String.valueOf(Util.CHALLENGE_SECONDS));
         timeCountLabel.setColor(UiKit.GOLD);
 
         Table buttons = new Table();
@@ -599,7 +897,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         })).width(300).height(100);
 
         String who = challengedName != null ? challengedName : "your opponent";
-        showRequestPanel("CHALLENGE SENT", "Waiting for " + who + " to accept...", buttons);
+        showRequestPanel(who, "CHALLENGE SENT", "Waiting for " + who + " to accept...", buttons);
 
         // No answer in time: withdraw the challenge (only if this dialog's challenge is still the open one)
         final String requestId = outgoingRequestId;
