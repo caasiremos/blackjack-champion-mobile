@@ -268,8 +268,9 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
                 pendingRequestId = message.get("request_id").getAsString();
                 String fromName = message.has("from_name") ? message.get("from_name").getAsString() : "A player";
                 int amount = message.has("amount") ? message.get("amount").getAsInt() : 0;
+                int fee = message.has("fee") ? message.get("fee").getAsInt() : ChipBadge.feeFor(amount);
                 boolean rematch = message.has("rematch") && message.get("rematch").getAsBoolean();
-                acceptGameRequestDialog(rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points", amount));
+                acceptGameRequestDialog(rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points  ·  Fee: %,d", amount, fee));
             }
             case "request_sent" -> {
                 outgoingRequestId = message.get("request_id").getAsString();
@@ -611,12 +612,12 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     /**
-     * Challenge a player for the stake they chose, if we have the points for it.
+     * Challenge a player for the stake they chose, if we have the points for it and its service fee.
      */
     private void challenge(int opponentId, String opponentName, int stake) {
         WalletClient wallet = WalletClient.get();
-        if (wallet.isLoaded() && wallet.getBalance() < stake) {
-            commonUtilInterface.showToast(String.format(Locale.US, "%s plays for %,d points. Top up to play them.", opponentName, stake));
+        if (wallet.isLoaded() && wallet.getBalance() < stake + ChipBadge.feeFor(stake)) {
+            commonUtilInterface.showToast("You don't have enough points to request a game");
             return;
         }
         initiateGameRequest(opponentId, opponentName, stake);

@@ -549,7 +549,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         panel.add(GameText.label(assetStore.messageFont, "Game sounds")).left().width(420).padBottom(24);
         panel.add(sound[0]).width(190).height(76).right().padBottom(24).row();
 
-        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d points)", currentStake()));
+        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d points + %,d fee)", currentStake(), ChipBadge.feeFor(currentStake())));
         leaveHint.setColor(UiKit.MUTED);
         TextButton[] leave = new TextButton[1];
         leave[0] = UiKit.button(assetStore, "LEAVE TABLE", UiKit.Style.SECONDARY, () -> {
@@ -644,11 +644,20 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         panel.add(vs).pad(0, 36, 0, 36);
         panel.add(finalHand("You", result.get("my_score").getAsInt(), gameView.getAsJsonArray("my_cards"), won)).row();
 
-        // Points won or lost, and the new balance
-        Label chipsLabel = GameText.label(assetStore.titleFont, chips == 0 ? "Both stakes are returned"
-            : String.format(Locale.US, "%s%,d points", chips > 0 ? "+" : "-", Math.abs(chips)));
-        chipsLabel.setColor(chips > 0 ? WIN_COLOR : chips < 0 ? LOW_TIME_TINT : Color.WHITE);
+        // Points won or lost after the service fee, which both players pay whatever the result
+        int fee = gameView.has("fee") ? gameView.get("fee").getAsInt() : 0;
+        int net = chips - fee;
+        Label chipsLabel = GameText.label(assetStore.titleFont, net == 0 ? "No points change hands"
+            : String.format(Locale.US, "%s%,d points", net > 0 ? "+" : "-", Math.abs(net)));
+        chipsLabel.setColor(net > 0 ? WIN_COLOR : net < 0 ? LOW_TIME_TINT : Color.WHITE);
         panel.add(chipsLabel).colspan(3).padTop(26).row();
+        if (fee > 0) {
+            Label feeLabel = GameText.label(assetStore.chipTaglineFont, push
+                ? String.format(Locale.US, "Stakes returned, %,d point service fee", fee)
+                : String.format(Locale.US, "Includes the %,d point service fee", fee));
+            feeLabel.setColor(UiKit.MUTED);
+            panel.add(feeLabel).colspan(3).padTop(4).row();
+        }
         pointsLabel = GameText.label(assetStore.listFont, balanceText());
         pointsLabel.setColor(UiKit.MUTED);
         panel.add(pointsLabel).colspan(3).padBottom(28).row();

@@ -70,6 +70,20 @@ public class ChipBadge extends Table {
         };
     }
 
+    /**
+     * The service fee each player pays per game at this stake, whoever wins. Must match the
+     * server's fees; the server decides, this is only for checking and showing before asking it.
+     */
+    public static int feeFor(int amount) {
+        return switch (amount) {
+            case 200, 500 -> 25;
+            case 1000 -> 50;
+            case 2000 -> 100;
+            case 5000 -> 250;
+            default -> 0;
+        };
+    }
+
     public static int amountOf(String key) {
         return switch (key) {
             case "stakes" -> 500;

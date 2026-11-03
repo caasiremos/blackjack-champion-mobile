@@ -326,11 +326,12 @@ public class GameSettingScreen implements Screen, BackHandler {
     // ---- Stakes ----
 
     private void pickStake(String chipName) {
-        // A stake is paid in points, so it can't be more than you have
+        // A stake is paid in points with its service fee on top, so you need both
         int amount = ChipBadge.amountOf(chipName);
         WalletClient wallet = WalletClient.get();
-        if (wallet.isLoaded() && wallet.getBalance() < amount) {
-            commonUtilInterface.showToast(String.format(Locale.US, "You need %,d points to stake %,d. Top up to play.", amount, amount));
+        int needed = amount + ChipBadge.feeFor(amount);
+        if (wallet.isLoaded() && wallet.getBalance() < needed) {
+            commonUtilInterface.showToast(String.format(Locale.US, "You need %,d points to stake %,d. Top up to play.", needed, amount));
             return;
         }
 
@@ -507,7 +508,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         panel.add(GameText.title(assetStore, "CHALLENGE!")).colspan(2).row();
 
         Label message = GameText.label(assetStore.messageFont,
-            fromName + " wants to play you for " + String.format(Locale.US, "%,d", amount) + " points");
+            fromName + " wants to play you for " + String.format(Locale.US, "%,d points (fee %,d)", amount, ChipBadge.feeFor(amount)));
         panel.add(message).colspan(2).padTop(14).row();
 
         timeCountLabel = GameText.label(assetStore.heroFont, String.valueOf(Util.CHALLENGE_SECONDS));
