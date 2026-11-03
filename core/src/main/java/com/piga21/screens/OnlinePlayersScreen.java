@@ -660,7 +660,8 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             nameLabel.setEllipsis(true);
 
             // Their chosen stake: what a challenge to them is played for
-            Label stakeAmount = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", betAmount));
+            Label stakeAmount = GameText.label(assetStore.captionFont, String.format(Locale.US, "%,d", betAmount));
+            stakeAmount.setFontScale(1.15f);
             stakeAmount.setColor(UiKit.GOLD);
 
             // A right-pointing chevron in its own column, clear of the amount and the row's edge
