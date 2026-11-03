@@ -50,7 +50,7 @@ import com.piga21.wallet.WalletClient;
 
 /**
  * The lobby. Three columns: who's online to challenge (left), your stake card (centre) and this
- * week's leaderboard with a podium for the top three (right), under a bar with Back and Share.
+ * week's leaderboard (right), under a bar with Back and Share.
  */
 public class OnlinePlayersScreen implements Screen, BackHandler {
     private static final float TOP_BAR_HEIGHT = 128;
@@ -466,8 +466,8 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     /**
-     * Server-ranked board: games won this week, ties going to whoever got there first. The top
-     * three stand on a podium; the rest are rows, and you're added underneath if not listed.
+     * Server-ranked board: games won this week, ties going to whoever got there first. One row
+     * per player, the top three with their medals; you're added underneath if not listed.
      */
     private void populateLeaderboard(JsonArray players, JsonObject me) {
         leaderboardContent.clearChildren();
@@ -483,25 +483,12 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             return;
         }
 
-        // 2nd, 1st, 3rd, so first place stands in the middle
-        JsonObject[] top = new JsonObject[3];
         boolean meListed = false;
         for (int i = 0; i < players.size(); i++) {
             JsonObject player = players.get(i).getAsJsonObject();
-            meListed |= player.get("id").getAsInt() == myId;
-            int rank = player.get("rank").getAsInt();
-            if (rank <= 3) top[rank - 1] = player;
-        }
-        Table podium = new Table();
-        podium.bottom();
-        podium.add(podiumPlace(top[1], 2, myId)).expandX().fillX().uniformX().bottom();
-        podium.add(podiumPlace(top[0], 1, myId)).expandX().fillX().uniformX().bottom().padLeft(14).padRight(14);
-        podium.add(podiumPlace(top[2], 3, myId)).expandX().fillX().uniformX().bottom();
-        leaderboardContent.add(podium).expandX().fillX().padBottom(18).row();
-
-        for (int i = 0; i < players.size(); i++) {
-            JsonObject player = players.get(i).getAsJsonObject();
-            if (player.get("rank").getAsInt() > 3) addLeaderboardRow(player, player.get("id").getAsInt() == myId);
+            boolean isMe = player.get("id").getAsInt() == myId;
+            meListed |= isMe;
+            addLeaderboardRow(player, isMe);
         }
         if (!meListed && me != null && !me.get("rank").isJsonNull()) {
             addLeaderboardRow(me, true);
@@ -528,73 +515,40 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         return rank == 1 ? UiKit.GOLD : rank == 2 ? UiKit.SILVER : UiKit.BRONZE;
     }
 
-    /**
-     * One podium place: medal, avatar, name, wins, and a pedestal whose height is its rank.
-     */
-    private Table podiumPlace(JsonObject player, int rank, int myId) {
-        Color color = medalColor(rank);
-        TextureRegion medal = rank == 1 ? goldTR : rank == 2 ? silverTR : bronzeTR;
-        float avatarSize = rank == 1 ? 112 : 88;
-        float pedestalHeight = rank == 1 ? 112 : rank == 2 ? 82 : 62;
-
-        Label number = GameText.label(assetStore.headingFont, String.valueOf(rank));
-        number.setColor(color);
-        Table pedestal = new Table();
-        pedestal.setBackground(UiKit.pedestal(String.valueOf(rank), color));
-        pedestal.add(number);
-
-        Table place = new Table();
-        place.bottom();
-        if (player == null) {
-            // Nobody there yet
-            Stack empty = new Stack();
-            empty.add(new Image(UiKit.disc("emptySeat", new Color(1, 1, 1, 0.03f), new Color(1, 1, 1, 0.12f), 0.05f)));
-            place.add(empty).size(avatarSize, avatarSize).padBottom(10).row();
-            Label open = GameText.label(assetStore.captionFont, "Open");
-            open.setColor(UiKit.SOFT);
-            place.add(open).padBottom(10).row();
-            place.add(pedestal).expandX().fillX().height(pedestalHeight);
-            return place;
-        }
-
-        String name = player.get("name").getAsString();
-        boolean isMe = player.get("id").getAsInt() == myId;
-        int wins = player.has("week_wins") ? player.get("week_wins").getAsInt() : 0;
-
-        Label nameLabel = GameText.label(assetStore.bodyFont, name);
-        nameLabel.setColor(isMe ? UiKit.GOLD : UiKit.INK);
-        nameLabel.setEllipsis(true);
-        nameLabel.setAlignment(Align.center);
-        Label winsLabel = GameText.label(assetStore.captionFont, String.format(Locale.US, "%d %s", wins, wins == 1 ? "WIN" : "WINS"));
-        winsLabel.setColor(color);
-
-        place.add(new Image(medal)).size(62, 67).padBottom(-20).row();
-        place.add(UiKit.avatar(assetStore, name, avatarSize, color, isMe, false)).size(avatarSize, avatarSize).row();
-        place.add(nameLabel).expandX().fillX().minWidth(0).padTop(8).row();
-        place.add(winsLabel).padBottom(10).row();
-        place.add(pedestal).expandX().fillX().height(pedestalHeight);
-
-        int playerId = player.get("id").getAsInt();
-        tappable(place, () -> openProfile(playerId, isMe));
-        return place;
-    }
-
     private void addLeaderboardRow(JsonObject player, boolean isMe) {
         int rank = player.get("rank").getAsInt();
         String name = player.get("name").getAsString();
         int wins = player.has("week_wins") ? player.get("week_wins").getAsInt() : 0;
+        boolean medalled = rank <= 3;
+        Color color = medalled ? medalColor(rank) : UiKit.SOFT;
 
-        Label rankLabel = GameText.label(assetStore.buttonFont, "#" + rank);
-        rankLabel.setColor(isMe ? UiKit.GOLD : UiKit.SOFT);
+        // Top three get their medal, everyone else their number
+        Actor rankCell;
+        if (medalled) {
+            rankCell = new Image(rank == 1 ? goldTR : rank == 2 ? silverTR : bronzeTR);
+        } else {
+            Label number = GameText.label(assetStore.buttonFont, "#" + rank);
+            number.setColor(isMe ? UiKit.GOLD : UiKit.SOFT);
+            number.setAlignment(Align.center);
+            rankCell = number;
+        }
+
         Label nameLabel = GameText.label(assetStore.bodyFont, name);
         nameLabel.setColor(isMe ? UiKit.GOLD : UiKit.INK);
         nameLabel.setEllipsis(true);
-        Label winsLabel = GameText.label(assetStore.captionFont, String.format(Locale.US, "%d %s", wins, wins == 1 ? "WIN" : "WINS"));
-        winsLabel.setColor(UiKit.SOFT);
+        Label winsValue = GameText.label(assetStore.buttonFont, String.valueOf(wins));
+        winsValue.setColor(medalled ? color : UiKit.INK);
+        Label winsCaption = GameText.label(assetStore.captionFont, wins == 1 ? "WIN" : "WINS");
+        winsCaption.setColor(UiKit.SOFT);
+        Table winsBox = new Table();
+        winsBox.add(winsValue).right().row();
+        winsBox.add(winsCaption).right().padTop(-6);
 
         Table row = new Table();
-        row.add(rankLabel).width(78).left();
-        row.add(UiKit.avatar(assetStore, name, 60, isMe ? UiKit.GOLD : UiKit.SOFT, isMe, false)).size(60, 60).padRight(16);
+        Table rankBox = new Table();
+        rankBox.add(rankCell).size(medalled ? 50 : 72, medalled ? 54 : 50);
+        row.add(rankBox).width(72).padRight(14);
+        row.add(UiKit.avatar(assetStore, name, 68, isMe ? UiKit.GOLD : color, isMe, false)).size(68, 68).padRight(18);
         row.add(nameLabel).left().expandX().fillX().minWidth(0);
         if (isMe) {
             Label you = GameText.label(assetStore.captionFont, "YOU");
@@ -604,10 +558,10 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             tag.add(you);
             row.add(tag).padLeft(10).padRight(14);
         }
-        row.add(winsLabel).right();
+        row.add(winsBox).right().padLeft(10);
         int playerId = player.get("id").getAsInt();
         pressable(row, isMe ? UiKit.tileMe() : UiKit.tile(), () -> openProfile(playerId, isMe));
-        leaderboardContent.add(row).expandX().fillX().height(88).padBottom(10).row();
+        leaderboardContent.add(row).expandX().fillX().height(104).padBottom(12).row();
     }
 
     private void openProfile(int playerId, boolean isMe) {

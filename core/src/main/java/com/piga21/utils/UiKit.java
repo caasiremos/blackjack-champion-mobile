@@ -183,13 +183,6 @@ public class UiKit {
     }
 
     /**
-     * A block under a podium place, tinted like its medal.
-     */
-    public static Drawable pedestal(String key, Color color) {
-        return rounded("pedestal" + key, new Color(color.r, color.g, color.b, 0.16f), new Color(color.r, color.g, color.b, 0.55f), 22, 2);
-    }
-
-    /**
      * A vertical gradient, stretched to whatever it covers.
      */
     public static Drawable gradient(String key, Color top, Color bottom) {
