@@ -169,13 +169,6 @@ public class UiKit {
     }
 
     /**
-     * A small sunken box for one number, e.g. points available.
-     */
-    public static Drawable statTile() {
-        return padded(rounded("statTile", new Color(0, 0, 0, 0.3f), new Color(1, 1, 1, 0.07f), 24, 2), 28, 16);
-    }
-
-    /**
      * An outlined capsule for short tags ("THIS WEEK", "YOU").
      */
     public static Drawable tag(String key, Color color) {
