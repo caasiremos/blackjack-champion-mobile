@@ -510,7 +510,7 @@ public class GameSettingScreen implements Screen, BackHandler {
             fromName + " wants to play you for " + String.format(Locale.US, "%,d", amount) + " points");
         panel.add(message).colspan(2).padTop(14).row();
 
-        timeCountLabel = GameText.label(assetStore.heroFont, "5");
+        timeCountLabel = GameText.label(assetStore.heroFont, String.valueOf(Util.CHALLENGE_SECONDS));
         timeCountLabel.setColor(UiKit.GOLD);
         panel.add(timeCountLabel).colspan(2).padTop(10).padBottom(10).row();
 
@@ -527,7 +527,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         overlayShowing = true;
 
         // Start countdown timer
-        final int[] countdown = {5}; // Start from 5 seconds
+        final int[] countdown = {Util.CHALLENGE_SECONDS};
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
@@ -545,7 +545,7 @@ public class GameSettingScreen implements Screen, BackHandler {
                     }
                 });
             }
-        }, 0, 1, 5);
+        }, 0, 1, Util.CHALLENGE_SECONDS);
     }
 
 

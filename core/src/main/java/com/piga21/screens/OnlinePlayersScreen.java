@@ -484,7 +484,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     private void acceptGameRequestDialog(String title, String detail) {
-        timeCountLabel = GameText.label(assetStore.titleFont, "5");
+        timeCountLabel = GameText.label(assetStore.titleFont, String.valueOf(Util.CHALLENGE_SECONDS));
         timeCountLabel.setColor(UiKit.GOLD);
 
         Table buttons = new Table();
@@ -588,7 +588,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     }
 
     private void sendGameRequestDialog() {
-        timeCountLabel = GameText.label(assetStore.titleFont, "5");
+        timeCountLabel = GameText.label(assetStore.titleFont, String.valueOf(Util.CHALLENGE_SECONDS));
         timeCountLabel.setColor(UiKit.GOLD);
 
         Table buttons = new Table();

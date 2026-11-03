@@ -179,8 +179,13 @@ public class Util {
         }
     }
 
+    /**
+     * How long a challenge waits for an answer
+     */
+    public static final int CHALLENGE_SECONDS = 10;
+
     public static void startCountdown(Label timeLabel, Runnable onFinish) {
-        final int[] countdown = {5};
+        final int[] countdown = {CHALLENGE_SECONDS};
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
@@ -193,7 +198,7 @@ public class Util {
                     }
                 });
             }
-        }, 0, 1, 5); // Delay 0, interval 1 second, repeat 5 times
+        }, 0, 1, CHALLENGE_SECONDS); // a tick a second, then once more to finish
     }
 
     /**
