@@ -224,7 +224,18 @@ public class UiKit {
      * A "<" chevron, for the back button.
      */
     public static Drawable chevronLeft(Color color) {
-        NinePatchDrawable cached = cache.get("chevronLeft");
+        return chevron("chevronLeft", color, false);
+    }
+
+    /**
+     * A ">" chevron, e.g. at the end of a row you can tap.
+     */
+    public static Drawable chevronRight(Color color) {
+        return chevron("chevronRight", color, true);
+    }
+
+    private static Drawable chevron(String key, Color color, boolean right) {
+        NinePatchDrawable cached = cache.get(key);
         if (cached != null) return cached;
         int size = 64;
         Pixmap pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
@@ -233,10 +244,12 @@ public class UiKit {
         // Two thick strokes, drawn as runs of dots
         for (int i = 0; i <= 40; i++) {
             float t = i / 40f;
-            pixmap.fillCircle((int) (40 - 18 * t), (int) (12 + 20 * t), 5);
-            pixmap.fillCircle((int) (40 - 18 * t), (int) (52 - 20 * t), 5);
+            int x = (int) (40 - 18 * t);
+            if (right) x = size - 1 - x;
+            pixmap.fillCircle(x, (int) (12 + 20 * t), 5);
+            pixmap.fillCircle(x, (int) (52 - 20 * t), 5);
         }
-        return store("chevronLeft", pixmap);
+        return store(key, pixmap);
     }
 
     private static final Map<String, TextureRegionDrawable> discs = new HashMap<>();

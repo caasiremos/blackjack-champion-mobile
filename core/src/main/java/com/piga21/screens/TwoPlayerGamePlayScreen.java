@@ -549,7 +549,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         panel.add(GameText.label(assetStore.messageFont, "Game sounds")).left().width(420).padBottom(24);
         panel.add(sound[0]).width(190).height(76).right().padBottom(24).row();
 
-        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d points + %,d fee)", currentStake(), ChipBadge.feeFor(currentStake())));
+        Label leaveHint = GameText.label(assetStore.chipTaglineFont, String.format(Locale.US, "Leaving forfeits this hand (%,d points + %,d service points)", currentStake(), ChipBadge.feeFor(currentStake())));
         leaveHint.setColor(UiKit.MUTED);
         TextButton[] leave = new TextButton[1];
         leave[0] = UiKit.button(assetStore, "LEAVE TABLE", UiKit.Style.SECONDARY, () -> {
@@ -653,8 +653,8 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         panel.add(chipsLabel).colspan(3).padTop(26).row();
         if (fee > 0) {
             Label feeLabel = GameText.label(assetStore.chipTaglineFont, push
-                ? String.format(Locale.US, "Stakes returned, %,d point service fee", fee)
-                : String.format(Locale.US, "Includes the %,d point service fee", fee));
+                ? String.format(Locale.US, "Points returned, less %,d service points", fee)
+                : String.format(Locale.US, "Includes %,d service points", fee));
             feeLabel.setColor(UiKit.MUTED);
             panel.add(feeLabel).colspan(3).padTop(4).row();
         }

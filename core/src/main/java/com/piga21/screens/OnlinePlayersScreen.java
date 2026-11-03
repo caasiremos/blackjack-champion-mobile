@@ -75,8 +75,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     private final Map<String, Boolean> knownPlayers = new HashMap<>(); // Track known players
     private Timer.Task pollingTask;
     private final TextureRegion goldTR, silverTR, bronzeTR;
-    private Label balanceLabel, onlineCountLabel, myNameLabel, myRankLabel;
-    private Table onlineCount;
+    private Label balanceLabel, myNameLabel, myRankLabel;
     private Cell<Actor> myAvatarCell;
 
     private final int myStake = ChipBadge.amountOf(ChipBadge.selectedKey());
@@ -201,17 +200,9 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         liveDot.setOrigin(Align.center);
         liveDot.addAction(Actions.forever(Actions.sequence(Actions.alpha(0.35f, 0.9f), Actions.alpha(1f, 0.9f))));
 
-        onlineCountLabel = GameText.label(assetStore.captionFont, "");
-        onlineCountLabel.setColor(UiKit.ONLINE);
-        onlineCount = new Table();
-        onlineCount.add(onlineCountLabel);
-        onlineCount.setVisible(false);
-        onlineCount.setBackground(UiKit.tag("online", UiKit.ONLINE));
-
         Table header = new Table();
         header.add(liveDot).size(18, 18).padRight(14);
         header.add(heading("ONLINE NOW")).left().expandX();
-        header.add(onlineCount).right();
 
         playersContent.top();
         playersContent.add(soft("Looking for players...")).padTop(80);
@@ -272,7 +263,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         stats.add(statBox("POINTS AVAILABLE", balanceLabel)).expandX().fillX().uniformX().padRight(18);
         Label fee = GameText.label(assetStore.headingFont, String.format(Locale.US, "%,d", ChipBadge.feeFor(myStake)));
         fee.setColor(UiKit.INK);
-        stats.add(statBox("SERVICE FEE PER GAME", fee)).expandX().fillX().uniformX();
+        stats.add(statBox("SERVICE POINTS PER GAME", fee)).expandX().fillX().uniformX();
 
         Table card = new Table();
         card.setBackground(UiKit.heroCard());
@@ -448,7 +439,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
                 int amount = message.has("amount") ? message.get("amount").getAsInt() : 0;
                 int fee = message.has("fee") ? message.get("fee").getAsInt() : ChipBadge.feeFor(amount);
                 boolean rematch = message.has("rematch") && message.get("rematch").getAsBoolean();
-                acceptGameRequestDialog(fromName, rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points  ·  Fee: %,d", amount, fee));
+                acceptGameRequestDialog(fromName, rematch ? fromName + " wants a rematch!" : fromName + " challenges you!", String.format(Locale.US, "Stake: %,d points  ·  Service points: %,d", amount, fee));
             }
             case "request_sent" -> {
                 outgoingRequestId = message.get("request_id").getAsString();
@@ -667,30 +658,21 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             Label nameLabel = GameText.label(assetStore.bodyFont, displayName);
             nameLabel.setColor(UiKit.INK);
             nameLabel.setEllipsis(true);
-            Label status = GameText.label(assetStore.captionFont, "Available now");
-            status.setColor(UiKit.ONLINE);
-            Table names = new Table();
-            names.add(nameLabel).left().expandX().fillX().minWidth(0).row();
-            names.add(status).left();
 
             // Their chosen stake: what a challenge to them is played for
             Label stakeAmount = GameText.label(assetStore.buttonFont, String.format(Locale.US, "%,d", betAmount));
             stakeAmount.setColor(UiKit.GOLD);
-            Label stakeCaption = GameText.label(assetStore.captionFont, "STAKE");
-            stakeCaption.setColor(UiKit.SOFT);
-            Table stake = new Table();
-            stake.add(stakeAmount).right().row();
-            stake.add(stakeCaption).right().padTop(-6);
 
-            Image go = new Image(UiKit.chevronLeft(UiKit.GOLD));
-            go.setOrigin(Align.center);
-            go.setScaleX(-1); // points right
+            // A right-pointing chevron in its own column, clear of the amount and the row's edge
+            Image go = new Image(UiKit.chevronRight(UiKit.GOLD));
+            Table arrow = new Table();
+            arrow.add(go).size(26, 26);
 
             Table row = new Table();
             row.add(UiKit.avatar(assetStore, displayName, 76, UiKit.GOLD, false, true)).size(76, 76).padRight(20);
-            row.add(names).left().expandX().fillX().minWidth(0);
-            row.add(stake).right().padLeft(14).padRight(16);
-            row.add(go).size(26, 26).padRight(8);
+            row.add(nameLabel).left().expandX().fillX().minWidth(0);
+            row.add(stakeAmount).right().padLeft(16);
+            row.add(arrow).width(26).padLeft(28).padRight(14);
             pressable(row, UiKit.tile(), () -> challenge(playerId, displayName, betAmount));
 
             // Fade in players who just came online
@@ -718,10 +700,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             playersContent.add(hint).padTop(6).row();
             playersContent.add(UiKit.button(assetStore, "SHARE PIGA21", UiKit.Style.SMALL, this::shareApp)).height(76).padTop(28).row();
         }
-        int count = newKnownPlayers.size();
-        onlineCountLabel.setText(count + " AVAILABLE");
-        onlineCount.setVisible(count > 0);
-
         knownPlayers.clear();
         knownPlayers.putAll(newKnownPlayers);
     }

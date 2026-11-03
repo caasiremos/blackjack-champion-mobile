@@ -508,7 +508,7 @@ public class GameSettingScreen implements Screen, BackHandler {
         panel.add(GameText.title(assetStore, "CHALLENGE!")).colspan(2).row();
 
         Label message = GameText.label(assetStore.messageFont,
-            fromName + " wants to play you for " + String.format(Locale.US, "%,d points (fee %,d)", amount, ChipBadge.feeFor(amount)));
+            fromName + " wants to play you for " + String.format(Locale.US, "%,d points (+%,d service points)", amount, ChipBadge.feeFor(amount)));
         panel.add(message).colspan(2).padTop(14).row();
 
         timeCountLabel = GameText.label(assetStore.heroFont, String.valueOf(Util.CHALLENGE_SECONDS));

@@ -196,7 +196,7 @@ public class WalletDialog implements WalletClient.Listener {
         panel.add(GameText.title(assetStore, deposit ? "CONFIRM TOP UP" : "CONFIRM REDEEM")).colspan(2).padBottom(26).row();
         addRow(panel, deposit ? "From" : "To", WalletClient.formatPhone(phone));
         addRow(panel, "Amount", wallet.money(amount));
-        addRow(panel, "Fee", fee == 0 ? "Free" : wallet.money(fee));
+        addRow(panel, "Service points", fee == 0 ? "None" : wallet.money(fee));
         addRow(panel, deposit ? "You pay" : "Taken from your points", wallet.money(amount + fee));
 
         Label note = muted(deposit
@@ -285,7 +285,7 @@ public class WalletDialog implements WalletClient.Listener {
 
         addRow(panel, transaction.isDeposit() ? "From" : "To", transaction.phone);
         addRow(panel, "Amount", wallet.money(transaction.amount));
-        if (transaction.fee > 0) addRow(panel, "Fee", wallet.money(transaction.fee));
+        if (transaction.fee > 0) addRow(panel, "Service points", wallet.money(transaction.fee));
         addRow(panel, "Date", transaction.createdText());
         addRow(panel, "Reference", transaction.reference);
 
@@ -451,8 +451,8 @@ public class WalletDialog implements WalletClient.Listener {
 
     private String feeSummary(long amount) {
         long fee = deposit ? wallet.getDepositFee() : wallet.getWithdrawalFee();
-        if (fee == 0) return "No fee";
-        return "Fee " + wallet.money(fee) + "  ·  " + (deposit ? "You pay " : "Taken from your points ") + wallet.money(amount + fee);
+        if (fee == 0) return "No service points";
+        return "Service points " + wallet.money(fee) + "  ·  " + (deposit ? "You pay " : "Taken from your points ") + wallet.money(amount + fee);
     }
 
     private void addRow(Table table, String name, String value) {
