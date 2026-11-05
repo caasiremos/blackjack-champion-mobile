@@ -37,6 +37,8 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
     private WebSocket socket;
     private int reconnectAttempts = 0;
     private boolean closedByApp = false; // the app went offline on purpose: don't reconnect
+    private volatile boolean signedIn = false; // the server has authenticated this connection
+    private volatile String sendAfterSignIn; // e.g. accepting a challenge from a notification
 
     private WebSocketHandler.MessageListener messageListener;
 
@@ -111,6 +113,14 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
                 if (message.contains("\"status\":\"error\"") && message.contains("Invalid credentials") && sessionRejectedListener != null) {
                     mainHandler.post(sessionRejectedListener);
                 }
+                // A challenge while the app is in the background becomes a notification
+                ChallengeNotifier.onServerMessage(activity.getApplicationContext(), message);
+                if (message.contains("\"action\":\"authenticated\"")) {
+                    signedIn = true;
+                    String waiting = sendAfterSignIn;
+                    sendAfterSignIn = null;
+                    if (waiting != null) webSocket.send(waiting);
+                }
                 notifyMessageReceived(message);
                 // Send to core game logic
                 if (messageListener != null) {
@@ -121,6 +131,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
             @Override
             public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
                 log("Connection closed: " + code + " - " + reason);
+                signedIn = false;
                 if (socket == webSocket) socket = null;
                 notifyDisconnected(false);
             }
@@ -128,6 +139,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
             @Override
             public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, Response response) {
                 log("Connection failed: " + t.getMessage());
+                signedIn = false;
                 if (socket == webSocket) socket = null;
                 notifyError(t.getMessage());
                 attemptReconnect();
@@ -155,6 +167,17 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
             log("Sent: " + redact(message));
         } else {
             Log.w(TAG, "Cannot send message - not connected");
+        }
+    }
+
+    /**
+     * Send now if the server has signed this connection in, otherwise as soon as it does.
+     */
+    public void sendWhenSignedIn(String message) {
+        if (signedIn && socket != null) {
+            sendMessage(message);
+        } else {
+            sendAfterSignIn = message;
         }
     }
 

@@ -3,6 +3,7 @@ package com.piga21.temsoft;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -12,6 +13,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.FrameLayout;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
@@ -52,6 +56,34 @@ public class AndroidLauncher extends AndroidApplication{
 
         // Set content view
         setContentView(layout);
+
+        acceptChallengeFrom(getIntent());
+    }
+
+    /**
+     * Opened from a challenge notification: accept it. The server answers with game_started,
+     * which takes whichever screen is showing to the game table.
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        acceptChallengeFrom(intent);
+    }
+
+    private void acceptChallengeFrom(Intent intent) {
+        String requestId = intent == null ? null : intent.getStringExtra(ChallengeNotifier.EXTRA_ACCEPT_REQUEST);
+        if (requestId == null) return;
+        intent.removeExtra(ChallengeNotifier.EXTRA_ACCEPT_REQUEST);
+        ChallengeNotifier.cancel(this);
+        try {
+            JSONObject accept = new JSONObject();
+            accept.put("action", "accept_request");
+            accept.put("request_id", requestId);
+            androidWebSocketClient.sendWhenSignedIn(accept.toString());
+        } catch (JSONException e) {
+            // Can't happen with these values
+        }
     }
 
     @Override
@@ -88,6 +120,7 @@ public class AndroidLauncher extends AndroidApplication{
 
     @Override
     protected void onPause() {
+        ChallengeNotifier.appInForeground = false;
         googleSignInHandler.onAppPaused();
         super.onPause();
     }
@@ -95,6 +128,7 @@ public class AndroidLauncher extends AndroidApplication{
     @Override
     protected void onResume() {
         super.onResume();
+        ChallengeNotifier.appInForeground = true;
         googleSignInHandler.onAppResumed();
     }
 
