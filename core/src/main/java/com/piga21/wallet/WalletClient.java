@@ -111,6 +111,17 @@ public class WalletClient {
     }
 
     /**
+     * One transaction's latest state, e.g. when the server's push says it changed.
+     */
+    public void refreshTransaction(String reference) {
+        if (reference == null || !reference.matches("[0-9a-fA-F-]{36}")) {
+            refresh();
+            return;
+        }
+        call(Net.HttpMethods.GET, "/wallet/transactions/" + reference, null);
+    }
+
+    /**
      * @return the request ID, used to match the server's answer
      */
     public String deposit(long amount, String phoneNumber) {
@@ -252,15 +263,27 @@ public class WalletClient {
         if (!action.startsWith("wallet_")) return false;
 
         switch (action) {
-            case "wallet_summary":
+            case "wallet_summary": {
                 savedPhone = textOf(message, "phone");
                 applyWallet(message.getAsJsonObject("wallet"));
                 applyLimits(message.getAsJsonObject("limits"));
+                // Anything whose status moved since we last looked: tell whoever is watching it
+                List<WalletTransaction> before = new ArrayList<>(transactions);
                 transactions.clear();
                 addTransactions(message.getAsJsonArray("transactions"));
                 loaded = true;
+                for (WalletTransaction now : new ArrayList<>(transactions)) {
+                    WalletTransaction was = null;
+                    for (WalletTransaction old : before) {
+                        if (old.reference.equals(now.reference)) was = old;
+                    }
+                    if (was != null && !java.util.Objects.equals(was.status, now.status)) {
+                        for (Listener listener : new ArrayList<>(listeners)) listener.onTransactionUpdated(now);
+                    }
+                }
                 notifyWalletChanged();
                 break;
+            }
             case "wallet_deposit_ack":
             case "wallet_withdraw_ack": {
                 String requestId = textOf(message, "request_id");

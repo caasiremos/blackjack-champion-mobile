@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -26,6 +27,7 @@ import com.piga21.wallet.WalletClient;
  * isn't on screen, the player also gets a notification when it finishes.
  */
 public class PushService extends FirebaseMessagingService {
+    private static final String TAG = "PushService";
     private static final String CHANNEL_ID = "wallet";
     private static final int NOTIFICATION_ID = 23;
 
@@ -39,9 +41,11 @@ public class PushService extends FirebaseMessagingService {
         Map<String, String> data = message.getData();
         if (!"wallet".equals(data.get("type"))) return;
 
-        // The game is running: fetch the points now (the result shows wherever the player is)
+        Log.d(TAG, "Wallet push: " + data.get("kind") + " " + data.get("status"));
+        // The game is running: fetch that transaction (its screen updates) and the points now
         if (Gdx.app != null) {
-            Gdx.app.postRunnable(() -> WalletClient.get().refresh());
+            String reference = data.get("reference");
+            Gdx.app.postRunnable(() -> WalletClient.get().refreshTransaction(reference));
         }
         if (!ChallengeNotifier.appInForeground) {
             showFinished(data);

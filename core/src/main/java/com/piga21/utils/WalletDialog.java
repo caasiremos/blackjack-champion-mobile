@@ -25,6 +25,7 @@ import com.piga21.wallet.WalletTransaction;
  */
 public class WalletDialog implements WalletClient.Listener {
     private static final int PHONE_DIGITS = 10;
+    private static final int STATUS_CHECK_SECONDS = 3;
     private static final int MAX_AMOUNT_DIGITS = 9;
     private static final Color SUCCESS = Color.valueOf("#5BD47A");
 
@@ -310,9 +311,15 @@ public class WalletDialog implements WalletClient.Listener {
         Runnable updateConnection = () -> connection.setText(!transaction.isFinished() && !wallet.isConnected()
             ? "Connection lost. Reconnecting to get the latest status..." : "");
         updateConnection.run();
+        // The server's push normally brings the result; while it's still processing, also ask every
+        // few seconds, so a missed push never leaves the player waiting
+        int[] seconds = {0};
         panel.addAction(Actions.forever(Actions.sequence(Actions.delay(1f), Actions.run(() -> {
             if (!wallet.isConnected()) wallet.reconnect();
             updateConnection.run();
+            if (!transaction.isFinished() && ++seconds[0] % STATUS_CHECK_SECONDS == 0) {
+                wallet.refreshTransaction(transaction.reference);
+            }
         }))));
 
         Table buttons = new Table();
