@@ -317,7 +317,7 @@ public class WalletDialog implements WalletClient.Listener {
         } else if (transaction.isFinished()) {
             buttons.add(UiKit.button(assetStore, "DONE", UiKit.Style.PRIMARY, this::close)).width(300).height(100);
         } else {
-            Label later = muted("You can close this. Your history will show the result.");
+            Label later = muted("You can close this. Your points update when it completes.");
             panel.add(later).colspan(2).padTop(6).row();
             buttons.add(UiKit.button(assetStore, "CLOSE", UiKit.Style.SECONDARY, this::close)).width(300).height(100);
         }

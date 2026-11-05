@@ -67,8 +67,6 @@ public class WalletClient {
     private boolean withdrawalsEnabled = true;
     private long minAmount = 1000, maxAmount = 5000000, depositFee, withdrawalFee, dailyWithdrawalLimit;
     private final List<WalletTransaction> transactions = new ArrayList<>();
-    private boolean hasMoreHistory;
-    private int historyPage;
 
     // The request awaiting the server's acknowledgement, kept so it can be resent unchanged
     private String pendingRequestId;
@@ -112,13 +110,6 @@ public class WalletClient {
     public void refresh() {
         Map<String, Object> data = new HashMap<>();
         data.put("action", "wallet_summary");
-        send(data);
-    }
-
-    public void loadMoreHistory() {
-        Map<String, Object> data = new HashMap<>();
-        data.put("action", "wallet_history");
-        data.put("page", historyPage + 1);
         send(data);
     }
 
@@ -265,18 +256,9 @@ public class WalletClient {
                 applyWallet(message.getAsJsonObject("wallet"));
                 applyLimits(message.getAsJsonObject("limits"));
                 transactions.clear();
-                historyPage = 0;
                 addTransactions(message.getAsJsonArray("transactions"));
                 loaded = true;
                 notifyWalletChanged();
-                break;
-            case "wallet_history":
-                int page = message.has("page") ? message.get("page").getAsInt() : 0;
-                if (page == historyPage + 1) {
-                    historyPage = page;
-                    addTransactions(message.getAsJsonArray("transactions"));
-                    notifyWalletChanged();
-                }
                 break;
             case "wallet_deposit_ack":
             case "wallet_withdraw_ack": {
@@ -335,7 +317,6 @@ public class WalletClient {
         for (JsonElement element : list) {
             upsertAtEnd(new WalletTransaction(element.getAsJsonObject()));
         }
-        hasMoreHistory = list.size() >= 20;
     }
 
     /**
@@ -382,7 +363,6 @@ public class WalletClient {
     public long getWithdrawalFee() { return withdrawalFee; }
     public long getDailyWithdrawalLimit() { return dailyWithdrawalLimit; }
     public List<WalletTransaction> getTransactions() { return transactions; }
-    public boolean hasMoreHistory() { return hasMoreHistory; }
 
     public WalletTransaction find(String reference) {
         for (WalletTransaction transaction : transactions) {

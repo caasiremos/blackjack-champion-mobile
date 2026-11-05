@@ -45,7 +45,6 @@ import com.piga21.utils.ProfileDialog;
 import com.piga21.utils.SettingsDialog;
 import com.piga21.utils.UiKit;
 import com.piga21.utils.WalletDialog;
-import com.piga21.utils.WalletHistoryDialog;
 import com.piga21.wallet.WalletClient;
 import com.piga21.wallet.WalletTransaction;
 import com.piga21.utils.Util;
@@ -206,7 +205,7 @@ public class GameSettingScreen implements Screen, BackHandler {
     }
 
     /**
-     * Top up on the left, the points balance in the middle (opens the history), redeem on the right.
+     * Top up on the left, the points balance in the middle, redeem on the right.
      */
     private Table buildBottomBar() {
         TextButton topUp = UiKit.button(assetStore, "TOP UP", UiKit.Style.PRIMARY,
@@ -216,13 +215,12 @@ public class GameSettingScreen implements Screen, BackHandler {
 
         Table points = new Table();
         points.setBackground(UiKit.pill());
-        Label caption = GameText.label(assetStore.chipTaglineFont, "POINTS  ·  TAP FOR HISTORY");
+        Label caption = GameText.label(assetStore.chipTaglineFont, "POINTS");
         caption.setColor(UiKit.MUTED);
         pointsLabel = GameText.label(assetStore.buttonFont, pointsText());
         pointsLabel.setColor(UiKit.GOLD);
         points.add(caption).row();
         points.add(pointsLabel).padTop(2);
-        tappable(points, () -> WalletHistoryDialog.show(stage, assetStore));
 
         Table bar = new Table();
         bar.add(topUp).width(400).height(130).left().expandX().uniformX();
