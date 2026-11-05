@@ -66,6 +66,7 @@ public class WalletClient {
     private long minWithdrawalAmount = 1000;
     private boolean withdrawalsEnabled = true;
     private String savedPhone; // the player's own mobile money number, e.g. 0772123456, or null
+    private String redeemPhone; // where redemptions are paid: the number last topped up from, or null
     private long minAmount = 1000, maxAmount = 5000000, depositFee, withdrawalFee, dailyWithdrawalLimit;
     private final List<WalletTransaction> transactions = new ArrayList<>();
 
@@ -266,6 +267,7 @@ public class WalletClient {
         switch (action) {
             case "wallet_summary": {
                 savedPhone = textOf(message, "phone");
+                redeemPhone = textOf(message, "redeem_phone");
                 applyWallet(message.getAsJsonObject("wallet"));
                 applyLimits(message.getAsJsonObject("limits"));
                 // Anything whose status moved since we last looked: tell whoever is watching it
@@ -395,6 +397,11 @@ public class WalletClient {
      * The mobile money number saved on the player's profile, or null.
      */
     public String getSavedPhone() { return savedPhone; }
+
+    /**
+     * Redemptions are only paid to the number the player last topped up from; null until they have.
+     */
+    public String getRedeemPhone() { return redeemPhone; }
 
     /**
      * After the player changes it in their profile.

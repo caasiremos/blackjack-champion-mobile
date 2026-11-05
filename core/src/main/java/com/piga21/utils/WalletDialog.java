@@ -171,7 +171,20 @@ public class WalletDialog implements WalletClient.Listener {
         panel.add(subtitle).padBottom(26).row();
         // A number saved on their profile is used as it is: only the points are asked for
         String savedPhone = wallet.getSavedPhone();
-        if (savedPhone != null) {
+        if (!deposit) {
+            // Redemptions only go to the number last topped up from: no number to type, and a
+            // note saying why, so nobody can be talked into redeeming to someone else's phone
+            String redeemPhone = wallet.getRedeemPhone();
+            phone = redeemPhone == null ? "" : redeemPhone;
+            phoneField.setText(phone);
+            Label note = GameText.label(assetStore.listFont, redeemPhone == null
+                ? "Points can only be redeemed to the number you top up from. Top up first to redeem."
+                : "Paid only to " + WalletClient.formatPhone(redeemPhone) + ", the number you last topped up from. "
+                    + "This keeps your points safe: no one can redeem them to another phone.");
+            note.setColor(UiKit.GOLD);
+            note.setWrap(true);
+            panel.add(note).width(780).left().padBottom(16).row();
+        } else if (savedPhone != null) {
             phone = savedPhone;
             phoneField.setText(savedPhone);
             Label number = GameText.label(assetStore.listFont, (deposit ? "From " : "To ") + WalletClient.formatPhone(savedPhone)
@@ -214,7 +227,7 @@ public class WalletDialog implements WalletClient.Listener {
 
         Label note = muted(deposit
             ? "You'll get a mobile money prompt. Enter your PIN to approve."
-            : "The money goes to this number. Make sure it's right.");
+            : "Paid only to the number you last topped up from. Piga21 will never ask you to redeem to another number.");
         note.setWrap(true);
         note.setAlignment(Align.center);
         panel.add(note).colspan(2).width(760).padTop(20).row();
@@ -454,6 +467,7 @@ public class WalletDialog implements WalletClient.Listener {
      * What's wrong with the form, or null if it can go to review. Display only: the server checks again.
      */
     private String validate(String phone, long amount) {
+        if (!deposit && wallet.isLoaded() && wallet.getRedeemPhone() == null) return "Top up first to redeem";
         if (phone.length() < PHONE_DIGITS || phone.charAt(0) != '0') return "Enter your 10-digit number, e.g. 0772123456";
         if (amount <= 0) return "Enter an amount";
         long minimum = deposit ? wallet.getMinAmount() : wallet.getMinWithdrawalAmount();
