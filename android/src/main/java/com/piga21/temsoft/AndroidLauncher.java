@@ -93,6 +93,8 @@ public class AndroidLauncher extends AndroidApplication{
         PresenceService.onAppClosed = androidWebSocketClient::close;
         PresenceService.start(this);
         askToShowOnlineNotification();
+        // Keep the server's copy of this phone's push token current
+        PushRegistration.registerCurrent(this);
     }
 
     @Override

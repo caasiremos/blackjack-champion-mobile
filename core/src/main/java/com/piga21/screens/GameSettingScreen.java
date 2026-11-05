@@ -108,7 +108,6 @@ public class GameSettingScreen implements Screen, BackHandler {
         playEntrance();
 
         WalletClient wallet = WalletClient.get();
-        wallet.attach(webSocketHandler);
         walletListener = new WalletClient.Listener() {
             @Override
             public void onWalletChanged() {

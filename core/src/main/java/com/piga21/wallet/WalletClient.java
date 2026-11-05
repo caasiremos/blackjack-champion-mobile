@@ -19,16 +19,15 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.piga21.Piga21Game;
-import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.Constants;
 import com.piga21.utils.Util;
 
 /**
  * The player's points wallet (real money, topped up and redeemed by mobile money), kept in step
- * with the server. Top ups and redemptions are sent over HTTP so they don't wait on the socket;
- * the balance, history and status changes come over the game socket. Balances and statuses shown
- * in the app only ever come from here, and only from what the server sent: nothing is credited
- * on the phone.
+ * with the server over HTTP only: no socket and no queue. When Temsoft reports a result the server
+ * sends the phone a push, and the app answers it by fetching the points again ({@link #refresh}).
+ * Balances and statuses shown in the app only ever come from here, and only from what the server
+ * sent: nothing is credited on the phone.
  *
  * Each confirmed deposit/withdrawal gets one request ID. Sending it again (a retry, or after a
  * reconnect) can't create a second transaction: the server answers with the original.
@@ -60,7 +59,7 @@ public class WalletClient {
 
     private final Gson gson = new Gson();
     private final List<Listener> listeners = new ArrayList<>();
-    private WebSocketHandler socket;
+    private boolean reachable = true; // the last request got an answer from the server
 
     private boolean loaded;
     private long balance, reserved;
@@ -80,19 +79,18 @@ public class WalletClient {
         return instance;
     }
 
-    public void attach(WebSocketHandler socket) {
-        this.socket = socket;
-    }
-
+    /**
+     * Whether the server answered the last time we asked (false while the phone is offline).
+     */
     public boolean isConnected() {
-        return socket != null && socket.isConnected();
+        return reachable;
     }
 
     /**
-     * Try to reconnect after the socket gave up. The server re-authenticates and we refresh.
+     * Ask again after being offline.
      */
     public void reconnect() {
-        if (socket != null && !socket.isConnected()) socket.connect();
+        refresh();
     }
 
     public void addListener(Listener listener) {
@@ -109,9 +107,7 @@ public class WalletClient {
      * Ask for the authoritative balance, limits and recent transactions.
      */
     public void refresh() {
-        Map<String, Object> data = new HashMap<>();
-        data.put("action", "wallet_summary");
-        send(data);
+        call(Net.HttpMethods.GET, "/wallet", null);
     }
 
     /**
@@ -130,7 +126,7 @@ public class WalletClient {
      */
     public void retryPending() {
         if (pendingRequest != null) {
-            post(pendingPath, pendingRequest);
+            call(Net.HttpMethods.POST, "/wallet/" + pendingPath, pendingRequest);
             scheduleAckTimeout(pendingRequestId);
         }
     }
@@ -152,29 +148,31 @@ public class WalletClient {
         pendingRequestId = requestId;
         pendingRequest = data;
         pendingPath = path;
-        post(path, data);
+        call(Net.HttpMethods.POST, "/wallet/" + path, data);
         scheduleAckTimeout(requestId);
         return requestId;
     }
 
     /**
-     * The server answers in the same shape as the socket's wallet messages, so the answer goes
-     * through {@link #handle}. No answer (offline, timeout) leaves the request waiting to be resent.
+     * Every answer comes back in the wallet message shape (wallet_summary, wallet_deposit_ack,
+     * wallet_error, ...), so it goes through {@link #handle}. No answer (offline, timeout) leaves
+     * a top up or redemption waiting to be resent.
      */
-    private void post(String path, Map<String, Object> data) {
+    private void call(String method, String path, Map<String, Object> data) {
         String token = Util.getApiToken();
         if (token.isEmpty()) return;
 
-        Net.HttpRequest request = new HttpRequestBuilder()
+        HttpRequestBuilder builder = new HttpRequestBuilder()
             .newRequest()
-            .method(Net.HttpMethods.POST)
-            .url(Constants.API_BASE_URL + "/wallet/" + path)
+            .method(method)
+            .url(Constants.API_BASE_URL + path)
             .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
             .header("Authorization", "Bearer " + token)
-            .timeout((int) (ACK_TIMEOUT_SECONDS * 1000))
-            .content(gson.toJson(data))
-            .build();
+            .timeout((int) (ACK_TIMEOUT_SECONDS * 1000));
+        if (data != null) {
+            builder.header("Content-Type", "application/json").content(gson.toJson(data));
+        }
+        Net.HttpRequest request = builder.build();
 
         Gdx.net.sendHttpRequest(request, new Net.HttpResponseListener() {
             @Override
@@ -182,6 +180,7 @@ public class WalletClient {
                 int status = response.getStatus().getStatusCode();
                 String body = response.getResultAsString();
                 Gdx.app.postRunnable(() -> {
+                    reachable = true;
                     if (status == HttpStatus.SC_UNAUTHORIZED) {
                         // Saved login no longer valid: get a fresh one, then the request can be resent
                         if (Gdx.app.getApplicationListener() instanceof Piga21Game game && game.getAuthInterface() != null) {
@@ -201,6 +200,10 @@ public class WalletClient {
             @Override
             public void failed(Throwable t) {
                 Gdx.app.error("WalletClient", path + " failed: " + t.getMessage());
+                Gdx.app.postRunnable(() -> {
+                    reachable = false;
+                    notifyWalletChanged();
+                });
             }
 
             @Override
@@ -228,10 +231,6 @@ public class WalletClient {
             pendingPath = null;
             if (ackTimeout != null) ackTimeout.cancel();
         }
-    }
-
-    private void send(Map<String, Object> data) {
-        if (isConnected()) socket.sendMessage(gson.toJson(data));
     }
 
     /* Messages from the server */

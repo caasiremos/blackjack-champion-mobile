@@ -228,6 +228,8 @@ public class GoogleSignInHandler implements GoogleSignInInterface {
             dismissedUntil = 0;
             mainHandler.removeCallbacks(retry);
             androidWebSocketHandler.connect();
+            // So the server can reach this phone when a top up or redemption finishes
+            PushRegistration.registerCurrent(activity);
         });
     }
 

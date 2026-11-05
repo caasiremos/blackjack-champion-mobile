@@ -33,6 +33,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Pushes from the server: top up and redemption results -->
+        <service
+            android:name="com.piga21.temsoft.PushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <service
             android:name="com.piga21.temsoft.PresenceService"
             android:exported="false"
