@@ -515,7 +515,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     private void addLeaderboardRow(JsonObject player, boolean isMe) {
         int rank = player.get("rank").getAsInt();
         String name = player.get("name").getAsString();
-        int wins = player.has("week_wins") ? player.get("week_wins").getAsInt() : 0;
         boolean medalled = rank <= 3;
         Color color = medalled ? medalColor(rank) : UiKit.SOFT;
 
@@ -533,13 +532,6 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         Label nameLabel = GameText.label(assetStore.bodyFont, name);
         nameLabel.setColor(isMe ? UiKit.GOLD : UiKit.INK);
         nameLabel.setEllipsis(true);
-        Label winsValue = GameText.label(assetStore.buttonFont, String.valueOf(wins));
-        winsValue.setColor(medalled ? color : UiKit.INK);
-        Label winsCaption = GameText.label(assetStore.captionFont, wins == 1 ? "WIN" : "WINS");
-        winsCaption.setColor(UiKit.SOFT);
-        Table winsBox = new Table();
-        winsBox.add(winsValue).right().row();
-        winsBox.add(winsCaption).right().padTop(-6);
 
         Table row = new Table();
         Table rankBox = new Table();
@@ -553,9 +545,8 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             Table tag = new Table();
             tag.setBackground(UiKit.tag("you", UiKit.GOLD));
             tag.add(you);
-            row.add(tag).padLeft(10).padRight(14);
+            row.add(tag).padLeft(10).padRight(6);
         }
-        row.add(winsBox).right().padLeft(10);
         int playerId = player.get("id").getAsInt();
         pressable(row, isMe ? UiKit.tileMe() : UiKit.tile(), () -> openProfile(playerId, isMe));
         leaderboardContent.add(row).expandX().fillX().height(104).padBottom(12).row();
