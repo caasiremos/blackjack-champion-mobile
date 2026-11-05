@@ -272,11 +272,18 @@ public class WalletClient {
                 break;
             }
             case "wallet_transaction":
-            case "wallet_transaction_updated": {
+            case "wallet_transaction_updated":
+            // Pushed the moment Temsoft's callback is confirmed, so the result shows at once
+            case "wallet_callback": {
                 WalletTransaction transaction = new WalletTransaction(message.getAsJsonObject("transaction"));
+                // The instant push and the regular one can both bring the same news: tell listeners once
+                WalletTransaction known = find(transaction.reference);
+                boolean changed = known == null || !java.util.Objects.equals(known.status, transaction.status);
                 applyWallet(message.getAsJsonObject("wallet"));
                 upsert(transaction);
-                for (Listener listener : new ArrayList<>(listeners)) listener.onTransactionUpdated(transaction);
+                if (changed || "wallet_transaction".equals(action)) {
+                    for (Listener listener : new ArrayList<>(listeners)) listener.onTransactionUpdated(transaction);
+                }
                 notifyWalletChanged();
                 break;
             }
