@@ -127,7 +127,8 @@ public class WalletDialog implements WalletClient.Listener {
             } else if (deposit) {
                 subtitle.setText("Add money from your mobile money account.");
             } else {
-                subtitle.setText("Available: " + wallet.money(wallet.getBalance()));
+                subtitle.setText("You can redeem " + wallet.money(wallet.getRedeemable())
+                    + (wallet.getRedeemable() < wallet.getBalance() ? "  ·  welcome points are for play only" : ""));
             }
 
             String problem = validate(phone, amount());
@@ -455,7 +456,8 @@ public class WalletDialog implements WalletClient.Listener {
     private String validate(String phone, long amount) {
         if (phone.length() < PHONE_DIGITS || phone.charAt(0) != '0') return "Enter your 10-digit number, e.g. 0772123456";
         if (amount <= 0) return "Enter an amount";
-        if (amount < wallet.getMinAmount()) return "The minimum is " + wallet.money(wallet.getMinAmount());
+        long minimum = deposit ? wallet.getMinAmount() : wallet.getMinWithdrawalAmount();
+        if (amount < minimum) return (deposit ? "The minimum is " : "The minimum you can redeem is ") + wallet.money(minimum);
         if (amount > wallet.getMaxAmount()) return "The maximum is " + wallet.money(wallet.getMaxAmount());
         if (!deposit) {
             if (!wallet.areWithdrawalsEnabled()) return "Redeeming is disabled for your account";
@@ -463,6 +465,7 @@ public class WalletDialog implements WalletClient.Listener {
             if (!wallet.isLoaded()) return null;
             long total = amount + wallet.getWithdrawalFee();
             if (total > wallet.getBalance()) return "Not enough points (" + wallet.money(wallet.getBalance()) + " available)";
+            if (total > wallet.getRedeemable()) return "Welcome points are for play only. You can redeem " + wallet.money(wallet.getRedeemable());
         }
         return null;
     }

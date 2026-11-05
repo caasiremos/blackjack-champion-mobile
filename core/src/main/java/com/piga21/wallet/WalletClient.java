@@ -62,7 +62,8 @@ public class WalletClient {
     private boolean reachable = true; // the last request got an answer from the server
 
     private boolean loaded;
-    private long balance, reserved;
+    private long balance, reserved, redeemable;
+    private long minWithdrawalAmount = 1000;
     private boolean withdrawalsEnabled = true;
     private String savedPhone; // the player's own mobile money number, e.g. 0772123456, or null
     private long minAmount = 1000, maxAmount = 5000000, depositFee, withdrawalFee, dailyWithdrawalLimit;
@@ -331,12 +332,15 @@ public class WalletClient {
         if (wallet == null) return;
         balance = wallet.get("balance").getAsLong();
         reserved = wallet.get("reserved").getAsLong();
+        // Welcome points are for play only; an older server doesn't say, so all of it then
+        redeemable = wallet.has("redeemable") ? wallet.get("redeemable").getAsLong() : balance;
         withdrawalsEnabled = !wallet.has("withdrawals_enabled") || wallet.get("withdrawals_enabled").getAsBoolean();
     }
 
     private void applyLimits(JsonObject limits) {
         if (limits == null) return;
         minAmount = limits.get("min_amount").getAsLong();
+        minWithdrawalAmount = limits.has("min_withdrawal_amount") ? limits.get("min_withdrawal_amount").getAsLong() : minAmount;
         maxAmount = limits.get("max_amount").getAsLong();
         depositFee = limits.get("deposit_fee").getAsLong();
         withdrawalFee = limits.get("withdrawal_fee").getAsLong();
@@ -402,6 +406,12 @@ public class WalletClient {
     public long getReserved() { return reserved; }
     public boolean areWithdrawalsEnabled() { return withdrawalsEnabled; }
     public long getMinAmount() { return minAmount; }
+
+    /** The least that can be redeemed at once */
+    public long getMinWithdrawalAmount() { return minWithdrawalAmount; }
+
+    /** What can be redeemed now: the balance less any welcome points, which are for play only */
+    public long getRedeemable() { return redeemable; }
     public long getMaxAmount() { return maxAmount; }
     public long getDepositFee() { return depositFee; }
     public long getWithdrawalFee() { return withdrawalFee; }
