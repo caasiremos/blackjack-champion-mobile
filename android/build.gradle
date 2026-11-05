@@ -12,7 +12,7 @@ buildscript {
 
 android {
   namespace "com.piga21"
-  compileSdk 35
+  compileSdk 36
   sourceSets {
     main {
       manifest.srcFile 'AndroidManifest.xml'
@@ -40,9 +40,9 @@ android {
   defaultConfig {
     applicationId 'com.piga21'
     minSdkVersion 24
-    targetSdkVersion 35
-    versionCode 21
-    versionName "21"
+    targetSdkVersion 36
+    versionCode 22
+    versionName "22"
     multiDexEnabled true
   }
   compileOptions {

@@ -21,7 +21,14 @@
         android:label="@string/app_name"
         android:theme="@style/GdxTheme"
         android:usesCleartextTraffic="true"
+        android:enableOnBackInvokedCallback="false"
         tools:ignore="UnusedAttribute">
+        <!-- Android 16 (API 36): keep the Back key reaching the game (it closes dialogs, leaves
+             tables and exits), instead of the system's predictive back gesture taking it -->
+        <!-- Android 16: keep the game landscape on tablets and unfolded foldables too -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
         <activity
             android:name="com.piga21.temsoft.AndroidLauncher"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"
