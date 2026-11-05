@@ -65,6 +65,7 @@ public class WalletClient {
     private boolean loaded;
     private long balance, reserved;
     private boolean withdrawalsEnabled = true;
+    private String savedPhone; // the player's own mobile money number, e.g. 0772123456, or null
     private long minAmount = 1000, maxAmount = 5000000, depositFee, withdrawalFee, dailyWithdrawalLimit;
     private final List<WalletTransaction> transactions = new ArrayList<>();
 
@@ -253,6 +254,7 @@ public class WalletClient {
 
         switch (action) {
             case "wallet_summary":
+                savedPhone = textOf(message, "phone");
                 applyWallet(message.getAsJsonObject("wallet"));
                 applyLimits(message.getAsJsonObject("limits"));
                 transactions.clear();
@@ -362,6 +364,19 @@ public class WalletClient {
 
     public boolean isLoaded() { return loaded; }
     public long getBalance() { return balance; }
+
+    /**
+     * The mobile money number saved on the player's profile, or null.
+     */
+    public String getSavedPhone() { return savedPhone; }
+
+    /**
+     * After the player changes it in their profile.
+     */
+    public void setSavedPhone(String phone) {
+        savedPhone = phone == null || phone.isEmpty() ? null : phone;
+        notifyWalletChanged();
+    }
     public long getReserved() { return reserved; }
     public boolean areWithdrawalsEnabled() { return withdrawalsEnabled; }
     public long getMinAmount() { return minAmount; }

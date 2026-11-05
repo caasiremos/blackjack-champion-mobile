@@ -96,7 +96,7 @@ public class WalletDialog implements WalletClient.Listener {
         phoneField.setTextFieldFilter((textField, c) -> Character.isDigit(c));
         phoneField.setOnscreenKeyboard(visible -> Gdx.input.setOnscreenKeyboardVisible(visible, Input.OnscreenKeyboardType.PhonePad));
 
-        TextField amountField = UiKit.textField(assetStore, amountText, "Amount (points)");
+        TextField amountField = UiKit.textField(assetStore, amountText, "Points");
         amountField.setMaxLength(MAX_AMOUNT_DIGITS);
         amountField.setTextFieldFilter((textField, c) -> Character.isDigit(c));
         amountField.setOnscreenKeyboard(visible -> Gdx.input.setOnscreenKeyboardVisible(visible, Input.OnscreenKeyboardType.NumberPad));
@@ -167,7 +167,18 @@ public class WalletDialog implements WalletClient.Listener {
 
         panel.add(GameText.title(assetStore, action)).padBottom(8).row();
         panel.add(subtitle).padBottom(26).row();
-        panel.add(phoneField).width(780).height(104).padBottom(20).row();
+        // A number saved on their profile is used as it is: only the points are asked for
+        String savedPhone = wallet.getSavedPhone();
+        if (savedPhone != null) {
+            phone = savedPhone;
+            phoneField.setText(savedPhone);
+            Label number = GameText.label(assetStore.listFont, (deposit ? "From " : "To ") + WalletClient.formatPhone(savedPhone)
+                + "   ·   change it in your profile");
+            number.setColor(UiKit.MUTED);
+            panel.add(number).width(780).left().padBottom(14).row();
+        } else {
+            panel.add(phoneField).width(780).height(104).padBottom(20).row();
+        }
         panel.add(amountField).width(780).height(104).row();
         panel.add(hint).width(780).left().padTop(12).padBottom(24).row();
         panel.add(buttons).row();
@@ -195,7 +206,7 @@ public class WalletDialog implements WalletClient.Listener {
 
         panel.add(GameText.title(assetStore, deposit ? "CONFIRM TOP UP" : "CONFIRM REDEEM")).colspan(2).padBottom(26).row();
         addRow(panel, deposit ? "From" : "To", WalletClient.formatPhone(phone));
-        addRow(panel, "Amount", wallet.money(amount));
+        addRow(panel, "Points", wallet.money(amount));
         addRow(panel, "Service points", fee == 0 ? "None" : wallet.money(fee));
         addRow(panel, deposit ? "You pay" : "Taken from your points", wallet.money(amount + fee));
 
@@ -284,7 +295,7 @@ public class WalletDialog implements WalletClient.Listener {
         panel.add(headline).colspan(2).width(820).padBottom(22).row();
 
         addRow(panel, transaction.isDeposit() ? "From" : "To", transaction.phone);
-        addRow(panel, "Amount", wallet.money(transaction.amount));
+        addRow(panel, "Points", wallet.money(transaction.amount));
         if (transaction.fee > 0) addRow(panel, "Service points", wallet.money(transaction.fee));
         addRow(panel, "Date", transaction.createdText());
         addRow(panel, "Reference", transaction.reference);

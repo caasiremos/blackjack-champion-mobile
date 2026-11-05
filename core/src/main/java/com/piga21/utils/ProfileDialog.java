@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.function.Consumer;
 
 import com.piga21.AssetStore;
+import com.piga21.wallet.WalletClient;
 
 /**
  * A player's profile as an overlay: names, rank and record. The player's own profile also
@@ -61,6 +62,8 @@ public class ProfileDialog {
         addRow(table, assetStore, "Nickname", displayName(player));
         if (own) {
             addRow(table, assetStore, "Email", text(player, "email", "-"));
+            String phone = text(player, "phone_number", "");
+            addRow(table, assetStore, "Mobile money", phone.isEmpty() ? "Not set" : WalletClient.formatPhone(phone));
         }
         addRow(table, assetStore, "Rank this week", player.has("rank") && !player.get("rank").isJsonNull()
             ? "#" + player.get("rank").getAsInt() : "No wins yet");
@@ -79,7 +82,21 @@ public class ProfileDialog {
                         show(stage, assetStore, ui, updated, true, null, null, onUpdated);
                     },
                     () -> show(stage, assetStore, ui, player, true, null, null, onUpdated)));
-            table.add(change).height(96).padTop(34).colspan(2).row();
+            String phone = text(player, "phone_number", "");
+            TextButton setPhone = UiKit.button(assetStore, phone.isEmpty() ? "SET PHONE NUMBER" : "CHANGE PHONE NUMBER", UiKit.Style.SECONDARY, () ->
+                PhoneNumberDialog.show(stage, assetStore, phone,
+                    updated -> {
+                        String saved = text(updated, "phone_number", "");
+                        WalletClient.get().setSavedPhone(saved);
+                        ui.showToast(saved.isEmpty() ? "Phone number removed" : "Phone number saved");
+                        if (onUpdated != null) onUpdated.accept(updated);
+                        show(stage, assetStore, ui, updated, true, null, null, onUpdated);
+                    },
+                    () -> show(stage, assetStore, ui, player, true, null, null, onUpdated)));
+            Table actions = new Table();
+            actions.add(change).height(96).padRight(24);
+            actions.add(setPhone).height(96);
+            table.add(actions).padTop(34).colspan(2).row();
         } else if (onChallenge != null) {
             TextButton challenge = UiKit.button(assetStore, "CHALLENGE", UiKit.Style.PRIMARY, () -> {
                 CommonGameFunctions.hideOverlayScreen(true);

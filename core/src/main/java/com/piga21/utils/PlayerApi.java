@@ -28,6 +28,15 @@ public class PlayerApi {
         request(Net.HttpMethods.GET, "/player/me", null, callback);
     }
 
+    /**
+     * Save the player's mobile money number; empty removes it.
+     */
+    public static void updatePhoneNumber(String phoneNumber, Callback callback) {
+        JsonObject body = new JsonObject();
+        body.addProperty("phone_number", phoneNumber);
+        request(Net.HttpMethods.PATCH, "/player/phone", body.toString(), callback);
+    }
+
     public static void updateNickName(String nickName, Callback callback) {
         JsonObject body = new JsonObject();
         body.addProperty("nick_name", nickName);
