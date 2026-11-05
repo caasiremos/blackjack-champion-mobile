@@ -330,6 +330,8 @@ public class GameSettingScreen implements Screen, BackHandler {
         int needed = amount + ChipBadge.feeFor(amount);
         if (wallet.isLoaded() && wallet.getBalance() < needed) {
             commonUtilInterface.showToast(String.format(Locale.US, "You need %,d points to stake %,d. Top up to play.", needed, amount));
+            // Straight to topping up, so they can play this stake
+            WalletDialog.show(stage, assetStore, true);
             return;
         }
 
