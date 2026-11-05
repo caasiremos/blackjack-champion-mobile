@@ -26,7 +26,7 @@ import okhttp3.WebSocketListener;
 public class AndroidWebSocketHandler implements WebSocketHandler {
     private static final String TAG = "GameWebSocket";
     private static final int RECONNECT_DELAY_MS = 3000;
-    private static final int MAX_RECONNECT_ATTEMPTS = 5;
+    private static final int MAX_RECONNECT_DELAY_MS = 30000;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final OkHttpClient client;
@@ -36,6 +36,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
     private final Activity activity;
     private WebSocket socket;
     private int reconnectAttempts = 0;
+    private boolean closedByApp = false; // the app went offline on purpose: don't reconnect
 
     private WebSocketHandler.MessageListener messageListener;
 
@@ -81,6 +82,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
     @Override
     public void connect() {
         if (socket != null) return;
+        closedByApp = false;
 
         Request request = new Request.Builder()
             .url(SOCKET_URL)
@@ -133,17 +135,17 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
         };
     }
 
+    /**
+     * Keep trying for as long as the app is running, so the player comes back online after a
+     * network drop: quickly at first, then every half a minute.
+     */
     private void attemptReconnect() {
-        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            log("Reconnecting to ratchet (attempt " + reconnectAttempts + ")");
-            notifyDisconnected(true);
-
-            mainHandler.postDelayed(this::connect, RECONNECT_DELAY_MS);
-        } else {
-            log("Max reconnect attempts reached for ratchet");
-            notifyDisconnected( false);
-        }
+        if (closedByApp) return;
+        reconnectAttempts++;
+        long delay = Math.min((long) RECONNECT_DELAY_MS * reconnectAttempts, MAX_RECONNECT_DELAY_MS);
+        log("Reconnecting to ratchet (attempt " + reconnectAttempts + ", in " + delay + " ms)");
+        notifyDisconnected(true);
+        mainHandler.postDelayed(this::connect, delay);
     }
 
     @Override
@@ -163,6 +165,7 @@ public class AndroidWebSocketHandler implements WebSocketHandler {
 
     @Override
     public void close() {
+        closedByApp = true;
         if (socket != null) {
             socket.close(1000, "Normal closure");
             socket = null;
