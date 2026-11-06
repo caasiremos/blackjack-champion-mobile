@@ -652,14 +652,13 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         hands.add(finalHand("You", result.get("my_score").getAsInt(), gameView.getAsJsonArray("my_cards"), won))
             .expandX().fillX().uniformX();
 
-        // Points won or lost after the service points, which both players pay whatever the result
-        int fee = gameView.has("fee") ? gameView.get("fee").getAsInt() : 0;
-        int net = chips - fee;
+        // Points won or lost after the service points; a draw gives everything back, service points included
+        int fee = push || !gameView.has("fee") ? 0 : gameView.get("fee").getAsInt();
+        int net = push ? 0 : chips - fee;
         Label chipsLabel = GameText.label(assetStore.valueFont, net == 0 ? "No points change hands"
             : String.format(Locale.US, "%s%,d points", net > 0 ? "+" : "-", Math.abs(net)));
         chipsLabel.setColor(net > 0 ? WIN_COLOR : net < 0 ? LOW_TIME_TINT : UiKit.INK);
-        serviceNote = fee == 0 ? "" : push
-            ? String.format(Locale.US, "Points returned, less %,d service points", fee)
+        serviceNote = push ? "All points returned" : fee == 0 ? ""
             : String.format(Locale.US, "Includes %,d service points", fee);
         pointsLabel = GameText.label(assetStore.captionFont, resultDetails());
         pointsLabel.setColor(UiKit.SOFT);
