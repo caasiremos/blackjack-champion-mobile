@@ -312,6 +312,8 @@ public class WalletClient {
                     for (Listener listener : new ArrayList<>(listeners)) listener.onTransactionUpdated(transaction);
                 }
                 notifyWalletChanged();
+                // A top up that just went through also becomes the saved and redeem number: fetch them
+                if (changed && transaction.isDeposit() && WalletTransaction.SUCCESSFUL.equals(transaction.status)) refresh();
                 break;
             }
             case "wallet_error": {

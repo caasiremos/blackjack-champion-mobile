@@ -78,7 +78,8 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
     private TextureRegion deckTR;
     private Image deckImage;
-    private Label myScoreLabel, opponentScoreLabel, turnLabel, timerSecondsLabel, stakeLabel, pointsLabel;
+    private Label myScoreLabel, opponentScoreLabel, turnLabel, timerSecondsLabel, balanceLabel, pointsLabel;
+    private long shownBalance = -1;
     private Stack myScore, opponentScore;
     private Image timerFill;
     private Table timerRow, actionRow;
@@ -155,7 +156,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         stage.addActor(background);
         stage.addActor(vignette);
 
-        // Top bar: who you're playing, the stake, and the menu
+        // Top bar: who you're playing, your points, and the menu (the chip shows the stake)
         Table bar = new Table();
         bar.setBackground(UiKit.bar());
         bar.pad(0, 40, 0, 40);
@@ -168,11 +169,12 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         opponent.add(UiKit.initialBadge(assetStore, opponentName)).size(72, 72).padRight(18);
         opponent.add(names).left();
 
-        stakeLabel = GameText.label(assetStore.buttonFont, "");
-        stakeLabel.setColor(UiKit.GOLD);
-        Table stake = new Table();
-        stake.setBackground(UiKit.pill());
-        stake.add(stakeLabel);
+        balanceLabel = GameText.label(assetStore.buttonFont, "");
+        balanceLabel.setColor(UiKit.GOLD);
+        Table balance = new Table();
+        balance.setBackground(UiKit.pill());
+        balance.add(balanceLabel);
+        updateBalance();
 
         TextureRegion settingsArt = assetStore.otherComponents.findRegion("button_settings");
         // The art is a round gear icon followed by a "SETTINGS" pill; only the icon is used
@@ -182,7 +184,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         Table left = new Table();
         left.add(opponent);
         bar.add(left).left().expandX().uniformX();
-        bar.add(stake).center();
+        bar.add(balance).center();
         Table right = new Table();
         right.add(menu).size(88, 88);
         bar.add(right).right().expandX().uniformX();
@@ -392,8 +394,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         placeScore(myScore, myCardsShown.size(), myHandY());
         placeScore(opponentScore, opponentCardsShown.size(), opponentHandY());
 
-        int multiplier = view.get("multiplier").getAsInt();
-        stakeLabel.setText(String.format(Locale.US, "STAKE  %,d", view.get("stake").getAsInt()) + (multiplier > 1 ? "  ·  DOUBLED" : ""));
 
         turnSecondsLeft = view.get("turn_seconds_left").getAsFloat();
         updateTurnLabel();
@@ -616,6 +616,17 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         String balance = balanceText();
         if (serviceNote.isEmpty()) return balance;
         return balance.isEmpty() ? serviceNote : serviceNote + "   ·   " + balance;
+    }
+
+    /**
+     * The top bar's points, kept in step with the wallet (game stakes, payouts, top ups).
+     */
+    private void updateBalance() {
+        WalletClient wallet = WalletClient.get();
+        long balance = wallet.isLoaded() ? wallet.getBalance() : -1;
+        if (balance == shownBalance) return;
+        shownBalance = balance;
+        balanceLabel.setText(balance < 0 ? "POINTS  ..." : String.format(Locale.US, "POINTS  %,d", balance));
     }
 
     private String balanceText() {
@@ -957,6 +968,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
             updateRematchStatus();
         }
 
+        updateBalance();
         stage.act(delta);
         stage.draw();
     }
