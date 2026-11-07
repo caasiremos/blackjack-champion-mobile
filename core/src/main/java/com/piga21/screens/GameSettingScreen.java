@@ -42,6 +42,7 @@ import com.piga21.utils.CommonGameFunctions;
 import com.piga21.utils.CommonUtilInterface;
 import com.piga21.utils.OverlayContainer;
 import com.piga21.utils.ProfileDialog;
+import com.piga21.utils.HowToPlayDialog;
 import com.piga21.utils.SettingsDialog;
 import com.piga21.utils.UiKit;
 import com.piga21.utils.WalletDialog;
@@ -130,7 +131,7 @@ public class GameSettingScreen implements Screen, BackHandler {
     // ---- Layout ----
 
     /**
-     * Profile on the left, the game's name in the middle, settings on the right.
+     * Profile on the left, the game's name in the middle, help and settings on the right.
      */
     private Table buildTopBar() {
         Table bar = new Table();
@@ -166,9 +167,19 @@ public class GameSettingScreen implements Screen, BackHandler {
         settings.setOrigin(Align.center);
         tappable(settings, () -> SettingsDialog.show(stage, assetStore, commonUtilInterface, this::showMyProfile));
 
+        // Help: a gold "?" the size of the gear, opening how the game is played
+        Stack help = new Stack();
+        help.add(new Image(UiKit.circle("helpBadge", UiKit.GOLD, UiKit.GOLD_DARK, 44, 5)));
+        Label question = GameText.label(assetStore.titleFont, "?");
+        question.setAlignment(Align.center);
+        help.add(question);
+        help.setOrigin(Align.center);
+        tappable(help, () -> HowToPlayDialog.show(stage, assetStore));
+
         bar.add(profile).left().expandX().uniformX();
         bar.add(brand).center();
         Table right = new Table();
+        right.add(help).size(88, 88).padRight(28);
         right.add(settings).size(96, 96);
         bar.add(right).right().expandX().uniformX();
         return bar;
