@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1087625036439",
+    "project_id": "blackjack-1fe31",
+    "storage_bucket": "blackjack-1fe31.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1087625036439:android:90764d2abc5a3f34b31fd2",
+        "android_client_info": {
+          "package_name": "io.ngaigame.caasiremos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1087625036439-3eff8qf4utrek7jp2b35vu2k6j32dlmr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.ngaigame.caasiremos",
+            "certificate_hash": "68e2d62f4768edd271cf1e828fb7445f421d0539"
+          }
+        },
+        {
+          "client_id": "1087625036439-rsod4lij5oj49278ht3j68vvophcg2bh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.ngaigame.caasiremos",
+            "certificate_hash": "f0664d4588db681f002e8c44b2b770eccde85380"
+          }
+        },
+        {
+          "client_id": "1087625036439-42j754m65okkd9t3kfeavbtj3rluike7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFK-p9kmGbISUHIS61jINNq7qm0Z3vHU0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1087625036439-42j754m65okkd9t3kfeavbtj3rluike7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
