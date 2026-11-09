@@ -2,6 +2,7 @@ package com.piga21;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.assets.loaders.TextureLoader;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -35,6 +36,9 @@ public class AssetStore {
     public TextureAtlas redAtlas, blackAtlas, components, otherComponents, backgroundComponents;
     public Sound betchipSound, bell, blackJack, win, hitSound, shuffle, betChipInitializer;
     public HashMap<Card, TextureRegion> hashMap;
+    // The emoji players send each other in a game; the server knows the same names
+    public static final String[] EMOJIS = {"laugh", "cool", "shock", "angry", "cry"};
+    private final HashMap<String, TextureRegion> emojis = new HashMap<>();
     // Lilita One for titles, buttons, counters and results; Fredoka for names, lists and messages (both SIL OFL)
     private static final String DISPLAY_FONT = "fonts/LilitaOne-Regular.ttf";
     private static final String TEXT_FONT = "fonts/Fredoka-SemiBold.ttf";
@@ -100,6 +104,14 @@ public class AssetStore {
         manager.load(RED_THEME, TextureAtlas.class);
         themePath = THEMES[new Random().nextInt(THEMES.length)];
         manager.load(themePath, TextureAtlas.class);
+        // Mipmapped: they're drawn both small (the tray) and large (the bubbles)
+        TextureLoader.TextureParameter smooth = new TextureLoader.TextureParameter();
+        smooth.genMipMaps = true;
+        smooth.minFilter = Texture.TextureFilter.MipMapLinearLinear;
+        smooth.magFilter = Texture.TextureFilter.Linear;
+        for (String emoji : EMOJIS) {
+            manager.load("emoji/" + emoji + ".png", Texture.class, smooth);
+        }
         for (String sound : new String[]{"bell", "win", "card_shuffle", "cardadding", "black_jack", "chip_initializer", "betchipsound"}) {
             manager.load("sounds/" + sound + ".mp3", Sound.class);
         }
@@ -124,6 +136,9 @@ public class AssetStore {
             otherComponents = manager.get(OTHER_COMPONENTS, TextureAtlas.class);
             backgroundComponents = manager.get(RED_THEME, TextureAtlas.class);
             components = manager.get(themePath, TextureAtlas.class);
+            for (String emoji : EMOJIS) {
+                emojis.put(emoji, new TextureRegion(manager.get("emoji/" + emoji + ".png", Texture.class)));
+            }
             bell = sound("bell");
             win = sound("win");
             shuffle = sound("card_shuffle");
@@ -290,6 +305,11 @@ public class AssetStore {
         parameter.minFilter = Texture.TextureFilter.Linear;
         parameter.magFilter = Texture.TextureFilter.Linear;
         return parameter;
+    }
+
+    /** One of {@link #EMOJIS}, or null for a name this version doesn't have */
+    public TextureRegion emoji(String name) {
+        return emojis.get(name);
     }
 
     public TextureRegion getTextureRegion(Card card) {

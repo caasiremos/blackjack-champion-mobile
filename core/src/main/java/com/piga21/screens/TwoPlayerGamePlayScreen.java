@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -45,6 +46,7 @@ import com.piga21.sockets.WebSocketHandler;
 import com.piga21.utils.ChipBadge;
 import com.piga21.utils.CommonGameFunctions;
 import com.piga21.utils.CommonUtilInterface;
+import com.piga21.utils.EmojiChat;
 import com.piga21.utils.GameText;
 import com.piga21.utils.OverlayContainer;
 import com.piga21.utils.Settings;
@@ -84,6 +86,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private Image timerFill;
     private Table timerRow, actionRow;
     private TextButton hitButton, standButton;
+    private EmojiChat emojiChat;
 
     private final List<Image> myCardImages = new ArrayList<>();
     private final List<String> myCardsShown = new ArrayList<>();
@@ -241,6 +244,33 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         actionRow = new Table();
         stage.addActor(actionRow);
         hideActionButtons();
+
+        // Emoji to react with, bottom right; they pop up beside each player's hand
+        emojiChat = new EmojiChat(stage, assetStore, this::sendEmote);
+        Table tray = emojiChat.tray();
+        tray.setPosition(width - tray.getWidth() - 40, 40);
+        stage.addActor(tray);
+    }
+
+    private float emoteX() {
+        return stage.getWidth() - 420;
+    }
+
+    private void sendEmote(String emote, Vector2 from) {
+        emojiChat.show(emote, true, "YOU", emoteX(), myHandY() + CARD_HEIGHT / 2 + 20, from);
+        if (!webSocketHandler.isConnected()) return;
+        Map<String, Object> data = new HashMap<>();
+        data.put("action", "game_emote");
+        data.put("game_id", gameId);
+        data.put("emote", emote);
+        webSocketHandler.sendMessage(new Gson().toJson(data));
+    }
+
+    private void receiveEmote(JsonObject message) {
+        if (gameOver || !message.has("emote")) return;
+        emojiChat.show(message.get("emote").getAsString(), false, opponentName.toUpperCase(Locale.US),
+            emoteX(), opponentHandY() + CARD_HEIGHT / 2, null);
+        playSound(assetStore.betchipSound);
     }
 
     /**
@@ -369,6 +399,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
             case "opponent_disconnected" -> commonUtilInterface.showToast(
                 opponentName + " disconnected. Waiting " + message.get("grace_seconds").getAsInt() + "s for them to return...");
             case "opponent_reconnected" -> commonUtilInterface.showToast(opponentName + " is back");
+            case "game_emote" -> receiveEmote(message);
             default -> { }
         }
     }
@@ -402,6 +433,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         if ("finished".equals(view.get("status").getAsString())) {
             gameOver = true;
             hideActionButtons();
+            emojiChat.hide();
             timerRow.addAction(Actions.fadeOut(0.3f));
             JsonObject result = view.getAsJsonObject("result");
             // Let the last card and the revealed hole card land before the result
@@ -969,6 +1001,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         }
 
         updateBalance();
+        emojiChat.update(delta);
         stage.act(delta);
         stage.draw();
     }
