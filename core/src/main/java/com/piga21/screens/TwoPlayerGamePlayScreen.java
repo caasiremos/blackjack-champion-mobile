@@ -257,7 +257,8 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     }
 
     private void sendEmote(String emote, Vector2 from) {
-        emojiChat.show(emote, true, "YOU", emoteX(), myHandY() + CARD_HEIGHT / 2 + 20, from);
+        // Just above your hand's height, clear of the emoji tray beneath it
+        emojiChat.show(emote, true, "YOU", emoteX(), myHandY() + CARD_HEIGHT + 60, from);
         if (!webSocketHandler.isConnected()) return;
         Map<String, Object> data = new HashMap<>();
         data.put("action", "game_emote");
@@ -698,10 +699,17 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         // Points won or lost after the service points; a draw gives everything back, service points included
         int fee = push || !gameView.has("fee") ? 0 : gameView.get("fee").getAsInt();
         int net = push ? 0 : chips - fee;
-        Label chipsLabel = GameText.label(assetStore.valueFont, net == 0 ? "No points change hands"
-            : String.format(Locale.US, "%s%,d points", net > 0 ? "+" : "-", Math.abs(net)));
+        // A winner is shown what comes back to them: both stakes less their service points
+        // (e.g. 200 + 200 - 25 = 375). The loser sees what they lost, service points included.
+        int received = won ? 2 * chips - fee : 0;
+        String chipsText = won ? String.format(Locale.US, "You get %,d points", received)
+            : net == 0 ? "No points change hands"
+            : String.format(Locale.US, "%s%,d points", net > 0 ? "+" : "-", Math.abs(net));
+        Label chipsLabel = GameText.label(assetStore.valueFont, chipsText);
         chipsLabel.setColor(net > 0 ? WIN_COLOR : net < 0 ? LOW_TIME_TINT : UiKit.INK);
-        serviceNote = push ? "All points returned" : fee == 0 ? ""
+        serviceNote = push ? "All points returned"
+            : won ? String.format(Locale.US, "Your %,d + their %,d", chips, chips) + (fee == 0 ? "" : String.format(Locale.US, " - %,d service points", fee))
+            : fee == 0 ? ""
             : String.format(Locale.US, "Includes %,d service points", fee);
         pointsLabel = GameText.label(assetStore.captionFont, resultDetails());
         pointsLabel.setColor(UiKit.SOFT);

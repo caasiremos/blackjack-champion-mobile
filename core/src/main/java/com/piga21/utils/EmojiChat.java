@@ -21,12 +21,14 @@ import java.util.function.BiConsumer;
 import com.piga21.AssetStore;
 
 /**
- * Emoji the two players send each other during a game. A tray of five sits in a corner; a tapped
+ * Emoji the two players send each other during a game. A tray of six sits in a corner; a tapped
  * one pops up big with a little burst, and the opponent sees the same on their screen.
  */
 public class EmojiChat {
-    private static final float TRAY_SIZE = 76;
-    private static final float BUBBLE_SIZE = 168;
+    private static final float TRAY_SIZE = 92;
+    private static final float TRAY_GAP = 24; // between neighbouring emoji
+    private static final int TRAY_COLUMNS = 3; // two rows, so the tray stays clear of HIT / STAND
+    private static final float BUBBLE_SIZE = 190;
     private static final float COOLDOWN_SECONDS = 1.2f; // the server passes on one a second at most
 
     private final Stage stage;
@@ -43,7 +45,8 @@ public class EmojiChat {
         this.assetStore = assetStore;
 
         tray.setBackground(UiKit.pill());
-        tray.pad(10, 18, 10, 18);
+        tray.pad(16, 24, 16, 24);
+        int added = 0;
         for (String name : AssetStore.EMOJIS) {
             TextureRegion region = assetStore.emoji(name);
             if (region == null) continue;
@@ -71,7 +74,8 @@ public class EmojiChat {
                     onSend.accept(name, item.localToStageCoordinates(new Vector2(TRAY_SIZE / 2, TRAY_SIZE / 2)));
                 }
             });
-            tray.add(item).size(TRAY_SIZE, TRAY_SIZE).pad(0, 7, 0, 7);
+            tray.add(item).size(TRAY_SIZE, TRAY_SIZE).pad(TRAY_GAP / 2);
+            if (++added % TRAY_COLUMNS == 0) tray.row();
         }
         tray.pack();
         // A gentle nudge when the game starts, so players notice they can react

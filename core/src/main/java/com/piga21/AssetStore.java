@@ -37,7 +37,7 @@ public class AssetStore {
     public Sound betchipSound, bell, blackJack, win, hitSound, shuffle, betChipInitializer;
     public HashMap<Card, TextureRegion> hashMap;
     // The emoji players send each other in a game; the server knows the same names
-    public static final String[] EMOJIS = {"laugh", "cool", "shock", "angry", "cry"};
+    public static final String[] EMOJIS = {"laugh", "rofl", "cool", "shock", "angry", "cry"};
     private final HashMap<String, TextureRegion> emojis = new HashMap<>();
     // Lilita One for titles, buttons, counters and results; Fredoka for names, lists and messages (both SIL OFL)
     private static final String DISPLAY_FONT = "fonts/LilitaOne-Regular.ttf";
