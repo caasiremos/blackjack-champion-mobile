@@ -60,6 +60,11 @@ public class ProfileDialog {
         addRow(table, assetStore, "Name", text(player, "full_name", "-"));
         // No nickname means other players see the name, so show that
         addRow(table, assetStore, "Nickname", displayName(player));
+        // Shared so friends can pair with them by ID
+        String code = text(player, "player_code", "");
+        if (!code.isEmpty()) {
+            addRow(table, assetStore, "Player ID", code);
+        }
         if (own) {
             addRow(table, assetStore, "Email", text(player, "email", "-"));
             String phone = text(player, "phone_number", "");

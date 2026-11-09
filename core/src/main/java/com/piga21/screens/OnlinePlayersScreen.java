@@ -43,6 +43,7 @@ import com.piga21.utils.OverlayContainer;
 import com.piga21.utils.ChipBadge;
 import com.piga21.utils.GameText;
 import com.piga21.utils.PlayerApi;
+import com.piga21.utils.PairPlayerDialog;
 import com.piga21.utils.ProfileDialog;
 import com.piga21.utils.UiKit;
 import com.piga21.utils.Util;
@@ -69,6 +70,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
     private String outgoingRequestId;
     private String challengedName;
+    private PairPlayerDialog pairDialog; // open while typing a player ID, until the server answers
 
     private final Table playersContent = new Table();
     private final Table leaderboardContent = new Table();
@@ -223,7 +225,12 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
         playersContent.top();
         playersContent.add(soft("Looking for players...")).padTop(80);
-        return panel(header, "Tap a player to challenge them for their stake", playersContent);
+        Table panel = panel(header, "Tap a player to challenge them for their stake", playersContent);
+        // Anyone, online list or not, can be asked by their player ID
+        panel.row();
+        panel.add(UiKit.button(assetStore, "PAIR WITH PLAYER", UiKit.Style.SMALL, this::openPairDialog))
+            .expandX().fillX().height(84).padTop(18);
+        return panel;
     }
 
     // ---- Your stake ----
@@ -428,7 +435,13 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             return;
         }
         if (message.has("status") && "error".equals(message.get("status").getAsString())) {
-            commonUtilInterface.showToast(message.get("message").getAsString());
+            String error = message.get("message").getAsString();
+            // A request by player ID that failed: say so in the pair dialog, where they can fix the ID
+            if (pairDialog != null && pairDialog.isOpen()) {
+                pairDialog.showError(error);
+            } else {
+                commonUtilInterface.showToast(error);
+            }
             return;
         }
 
@@ -440,6 +453,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             case "leaderboard" -> populateLeaderboard(message.getAsJsonArray("players"),
                 message.has("me") && message.get("me").isJsonObject() ? message.getAsJsonObject("me") : null);
             case "game_request" -> {
+                closePairDialog(); // someone challenged us while we were typing an ID
                 pendingRequestId = message.get("request_id").getAsString();
                 String fromName = message.has("from_name") ? message.get("from_name").getAsString() : "A player";
                 int amount = message.has("amount") ? message.get("amount").getAsInt() : 0;
@@ -449,6 +463,13 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             }
             case "request_sent" -> {
                 outgoingRequestId = message.get("request_id").getAsString();
+                if (challengedName == null && message.has("to_name")) {
+                    challengedName = message.get("to_name").getAsString(); // asked by player ID
+                }
+                if (pairDialog != null) {
+                    pairDialog.dismiss();
+                    pairDialog = null;
+                }
                 sendGameRequestDialog();
             }
             case "request_declined" -> closeRequestDialog("Your challenge was declined");
@@ -782,6 +803,10 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
     @Override
     public boolean onBack() {
+        if (pairDialog != null && pairDialog.isOpen()) {
+            closePairDialog();
+            return true;
+        }
         // Back on a challenge dialog closes it (declining an incoming one) instead of leaving
         if (overlayShowing) {
             declineInitiatedGame();   // an incoming challenge
@@ -849,6 +874,37 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
             return;
         }
         initiateGameRequest(opponentId, opponentName, stake);
+    }
+
+    private void openPairDialog() {
+        if (!webSocketHandler.isConnected()) {
+            commonUtilInterface.showToast("Not connected to the game server");
+            return;
+        }
+        pairDialog = PairPlayerDialog.show(stage, assetStore, this::requestGameByCode);
+    }
+
+    private void closePairDialog() {
+        if (pairDialog != null) {
+            pairDialog.close();
+            pairDialog = null;
+        }
+    }
+
+    /**
+     * Ask whoever has this player ID for a game, for the stake they chose. The server finds the
+     * player and checks they're online and both have the points.
+     */
+    private void requestGameByCode(String playerCode) {
+        if (!webSocketHandler.isConnected()) {
+            pairDialog.showError("Not connected to the game server");
+            return;
+        }
+        challengedName = null; // the server tells us who it is
+        Map<String, Object> data = new HashMap<>();
+        data.put("action", "request_game");
+        data.put("player_code", playerCode);
+        webSocketHandler.sendMessage(new Gson().toJson(data));
     }
 
     private void initiateGameRequest(int opponentId, String opponentName, int amount) {
