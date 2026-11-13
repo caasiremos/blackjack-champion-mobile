@@ -21,13 +21,12 @@ import java.util.function.BiConsumer;
 import com.piga21.AssetStore;
 
 /**
- * Emoji the two players send each other during a game. A tray of six sits in a corner; a tapped
+ * Emoji the two players send each other during a game. A tray of five sits in a corner; a tapped
  * one pops up big with a little burst, and the opponent sees the same on their screen.
  */
 public class EmojiChat {
     private static final float TRAY_SIZE = 92;
-    private static final float TRAY_GAP = 24; // between neighbouring emoji
-    private static final int TRAY_COLUMNS = 3; // two rows, so the tray stays clear of HIT / STAND
+    private static final float TRAY_GAP = 20; // between neighbouring emoji
     private static final float BUBBLE_SIZE = 190;
     private static final float COOLDOWN_SECONDS = 1.2f; // the server passes on one a second at most
 
@@ -45,8 +44,7 @@ public class EmojiChat {
         this.assetStore = assetStore;
 
         tray.setBackground(UiKit.pill());
-        tray.pad(16, 24, 16, 24);
-        int added = 0;
+        tray.pad(12, 18, 12, 18);
         for (String name : AssetStore.EMOJIS) {
             TextureRegion region = assetStore.emoji(name);
             if (region == null) continue;
@@ -74,10 +72,10 @@ public class EmojiChat {
                     onSend.accept(name, item.localToStageCoordinates(new Vector2(TRAY_SIZE / 2, TRAY_SIZE / 2)));
                 }
             });
-            tray.add(item).size(TRAY_SIZE, TRAY_SIZE).pad(TRAY_GAP / 2);
-            if (++added % TRAY_COLUMNS == 0) tray.row();
+            tray.add(item).size(TRAY_SIZE, TRAY_SIZE).pad(0, TRAY_GAP / 2, 0, TRAY_GAP / 2);
         }
         tray.pack();
+        tray.setTransform(true); // so it can be shrunk to fit a narrow screen
         // A gentle nudge when the game starts, so players notice they can react
         tray.getColor().a = 0;
         tray.addAction(Actions.sequence(Actions.delay(0.6f), Actions.fadeIn(0.4f)));
@@ -85,6 +83,16 @@ public class EmojiChat {
 
     public Table tray() {
         return tray;
+    }
+
+    /**
+     * Put the tray in the bottom-right corner, all in one row, shrinking it if it would be
+     * wider than {@code maxWidth} (e.g. to stay clear of the HIT / STAND buttons).
+     */
+    public void placeBottomRight(float stageWidth, float margin, float maxWidth) {
+        float scale = Math.min(1f, maxWidth / tray.getWidth());
+        tray.setScale(scale);
+        tray.setPosition(stageWidth - tray.getWidth() * scale - margin, margin);
     }
 
     /** Call every frame */

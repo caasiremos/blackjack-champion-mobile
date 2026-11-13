@@ -64,6 +64,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private static final String HIDDEN_CARD = "HIDDEN";
     private static final float CARD_WIDTH = 165, CARD_HEIGHT = 230; // the card art is 132x184
     private static final float CARD_SPACING = 14;
+    private static final float HAND_TILE_WIDTH = 580; // a hand on the result panel
     private static final float TOP_BAR_HEIGHT = 120;
     private static final float TIMER_WIDTH = 520;
     private static final float TURN_SECONDS = 30; // the server's turn length, for the timer bar
@@ -104,7 +105,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private String incomingRematchId;
     private boolean awaitingRematch = false;
     private float rematchSecondsLeft = 0;
-    private String serviceNote = "";
     private Label rematchStatusLabel;
     private TextButton rematchButton;
     private boolean showingAccept = false;
@@ -247,9 +247,10 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
         // Emoji to react with, bottom right; they pop up beside each player's hand
         emojiChat = new EmojiChat(stage, assetStore, this::sendEmote);
-        Table tray = emojiChat.tray();
-        tray.setPosition(width - tray.getWidth() - 40, 40);
-        stage.addActor(tray);
+        // All in one row, between HIT / STAND (centred along the bottom) and the right edge
+        float actionRowHalfWidth = (320 + 32 + 320) / 2f;
+        emojiChat.placeBottomRight(width, 40, width / 2 - actionRowHalfWidth - 24 - 40);
+        stage.addActor(emojiChat.tray());
     }
 
     private float emoteX() {
@@ -373,7 +374,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     private void handleServerMessage(String raw, JsonObject message) {
         // Points change when the game takes or pays the stake
         if (WalletClient.get().handle(message)) {
-            if (pointsLabel != null) pointsLabel.setText(resultDetails());
+            if (pointsLabel != null) pointsLabel.setText(balanceText());
             return;
         }
         if (message.has("status") && "error".equals(message.get("status").getAsString())) {
@@ -643,15 +644,6 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
     }
 
     /**
-     * The line under the result: service points taken, then the new balance once it arrives.
-     */
-    private String resultDetails() {
-        String balance = balanceText();
-        if (serviceNote.isEmpty()) return balance;
-        return balance.isEmpty() ? serviceNote : serviceNote + "   ·   " + balance;
-    }
-
-    /**
      * The top bar's points, kept in step with the wallet (game stakes, payouts, top ups).
      */
     private void updateBalance() {
@@ -681,38 +673,59 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
 
         OverlayContainer overlay = CommonGameFunctions.initializeOverlay(stage, 0.82f);
 
-        // Same calm card as the lobby: one heading, both hands, the result, then the choices
+        // Two columns: the result and points on the left, both hands on the right; the
+        // choices along the bottom.
+        Color mood = push ? UiKit.INK : won ? UiKit.GOLD : LOW_TIME_TINT;
+
         Label title = GameText.label(assetStore.headingFont, push ? "DRAW" : blackjack ? "BLACKJACK!" : won ? "YOU WIN" : "YOU LOSE");
         title.setColor(won ? UiKit.GOLD : UiKit.INK);
         Label reason = GameText.label(assetStore.bodyFont, resultMessage(result));
         reason.setColor(UiKit.SOFT);
 
-        Label vs = GameText.label(assetStore.captionFont, "VS");
-        vs.setColor(UiKit.SOFT);
+        // The points: a winner sees what comes back to them, both stakes less their service
+        // points (200 + 200 - 25 = +375); a loser what they lost, service points included.
+        int fee = push || !gameView.has("fee") ? 0 : gameView.get("fee").getAsInt();
+        int stake = Math.abs(chips); // the loser's comes negative
+        int amount = push ? 0 : won ? 2 * stake - fee : stake + fee;
+        Label amountLabel = GameText.label(assetStore.titleFont, push ? "0" : String.format(Locale.US, "%s%,d", won ? "+" : "-", amount));
+        amountLabel.setFontScale(1.3f);
+        amountLabel.setColor(push ? UiKit.INK : won ? WIN_COLOR : LOW_TIME_TINT);
+        Label amountCaption = GameText.label(assetStore.captionFont, push ? "ALL POINTS RETURNED"
+            : !won && fee > 0 ? String.format(Locale.US, "POINTS  ·  INCL. %,d SERVICE", fee) : "POINTS");
+        amountCaption.setColor(UiKit.SOFT);
+
+        Table amountBlock = new Table();
+        amountBlock.left();
+        amountBlock.add(amountLabel).left().row();
+        amountBlock.add(amountCaption).left().padTop(-6);
+        Table glow = new Table();
+        glow.left(); // behind the amount, which sits at the left
+        glow.add(new Image(UiKit.glow("resultGlow" + outcome, new Color(mood.r, mood.g, mood.b, push ? 0.14f : 0.34f)))).size(440, 240).padLeft(-90);
+        Stack amountStack = new Stack();
+        amountStack.add(glow);
+        amountStack.add(amountBlock);
+
+        pointsLabel = GameText.label(assetStore.listFont, balanceText());
+        pointsLabel.setColor(UiKit.INK);
+
+        Table summary = new Table();
+        summary.left();
+        summary.add(title).left().row();
+        summary.add(reason).left().padTop(2).row();
+        summary.add(amountStack).left().height(170).padTop(28).row();
+        summary.add(pointsLabel).left().padTop(18).row();
+
+        // Both hands, stacked: theirs above, yours below, the winner's edged in gold
         Table hands = new Table();
         hands.add(finalHand(opponentName, result.get("opponent_score").getAsInt(), gameView.getAsJsonArray("opponent_cards"), !won && !push))
-            .expandX().fillX().uniformX();
-        hands.add(vs).padLeft(24).padRight(24);
+            .width(HAND_TILE_WIDTH).row();
         hands.add(finalHand("You", result.get("my_score").getAsInt(), gameView.getAsJsonArray("my_cards"), won))
-            .expandX().fillX().uniformX();
+            .width(HAND_TILE_WIDTH).padTop(16).row();
 
-        // Points won or lost after the service points; a draw gives everything back, service points included
-        int fee = push || !gameView.has("fee") ? 0 : gameView.get("fee").getAsInt();
-        int net = push ? 0 : chips - fee;
-        // A winner is shown what comes back to them: both stakes less their service points
-        // (e.g. 200 + 200 - 25 = 375). The loser sees what they lost, service points included.
-        int received = won ? 2 * chips - fee : 0;
-        String chipsText = won ? String.format(Locale.US, "You get %,d points", received)
-            : net == 0 ? "No points change hands"
-            : String.format(Locale.US, "%s%,d points", net > 0 ? "+" : "-", Math.abs(net));
-        Label chipsLabel = GameText.label(assetStore.valueFont, chipsText);
-        chipsLabel.setColor(net > 0 ? WIN_COLOR : net < 0 ? LOW_TIME_TINT : UiKit.INK);
-        serviceNote = push ? "All points returned"
-            : won ? String.format(Locale.US, "Your %,d + their %,d", chips, chips) + (fee == 0 ? "" : String.format(Locale.US, " - %,d service points", fee))
-            : fee == 0 ? ""
-            : String.format(Locale.US, "Includes %,d service points", fee);
-        pointsLabel = GameText.label(assetStore.captionFont, resultDetails());
-        pointsLabel.setColor(UiKit.SOFT);
+        Table columns = new Table();
+        columns.add(summary).width(560).left().top().padTop(10);
+        columns.add(new Image(UiKit.fadeRule("resultDivider", new Color(1, 1, 1, 0.12f)))).width(2).fillY().padLeft(40).padRight(40);
+        columns.add(hands).top();
 
         // Rematch asks the same opponent at the same stake; a decline or no answer goes back to the lobby
         TextButton lobby = UiKit.button(assetStore, "LOBBY", UiKit.Style.SECONDARY, this::leaveToLobby);
@@ -723,37 +736,19 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         });
         rematchButton.setTransform(true);
         Table buttons = new Table();
-        buttons.add(lobby).width(420).height(104).padRight(28);
-        buttons.add(rematchButton).width(420).height(104);
+        buttons.add(lobby).width(400).height(104).padRight(28);
+        buttons.add(rematchButton).width(400).height(104);
         rematchStatusLabel = GameText.label(assetStore.captionFont, "");
         rematchStatusLabel.setColor(UiKit.SOFT);
         rematchStatusLabel.setAlignment(Align.center);
 
-        // The outcome sets the mood: a warm glow behind the heading and a tinted result capsule
-        Color mood = push ? UiKit.INK : won ? UiKit.GOLD : LOW_TIME_TINT;
-        Table heading = new Table();
-        heading.add(title).row();
-        heading.add(reason).padTop(-2);
-        Table glow = new Table();
-        glow.add(new Image(UiKit.glow("resultGlow" + outcome, new Color(mood.r, mood.g, mood.b, push ? 0.16f : 0.34f)))).size(980, 300);
-        Stack header = new Stack();
-        header.add(glow);
-        header.add(heading);
-
-        Table outcomeBox = new Table();
-        outcomeBox.setBackground(UiKit.tint(outcome, net > 0 ? WIN_COLOR : net < 0 ? LOW_TIME_TINT : UiKit.INK));
-        outcomeBox.add(chipsLabel);
-
         Table panel = new Table();
         panel.setBackground(UiKit.gradientCard("resultCard", Color.valueOf("#5E0B1C"), Color.valueOf("#1D030A"),
-            new Color(0.96f, 0.7f, 0.19f, 0.6f), 44, 3, 56, 40));
-        panel.add(header).height(150).row();
-        panel.add(new Image(UiKit.fadeRule("resultRule", new Color(mood.r, mood.g, mood.b, 0.7f)))).width(760).height(2).padTop(4).padBottom(30).row();
-        panel.add(hands).width(1180).padBottom(32).row();
-        panel.add(outcomeBox).row();
-        panel.add(pointsLabel).padTop(12).padBottom(32).row();
+            new Color(0.96f, 0.7f, 0.19f, 0.6f), 44, 3, 64, 44));
+        panel.add(columns).row();
+        panel.add(new Image(UiKit.fadeRule("resultRule", new Color(mood.r, mood.g, mood.b, 0.5f)))).width(1100).height(2).padTop(36).padBottom(32).row();
         panel.add(buttons).row();
-        panel.add(rematchStatusLabel).padTop(16).row();
+        panel.add(rematchStatusLabel).padTop(14).row();
 
         panel.pack();
         panel.setPosition(stage.getWidth() / 2 - panel.getWidth() / 2, stage.getHeight() / 2 - panel.getHeight() / 2);
@@ -777,29 +772,34 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
      * edged in gold for the winner.
      */
     private Table finalHand(String name, int score, JsonArray cards, boolean winner) {
-        Label nameLabel = GameText.label(assetStore.bodyFont, name);
-        nameLabel.setColor(winner ? UiKit.GOLD : UiKit.INK);
+        boolean bust = score > 21;
+        Label nameLabel = GameText.label(assetStore.listFont, name.toUpperCase(Locale.US));
+        nameLabel.setColor(winner ? UiKit.GOLD : UiKit.SOFT);
         nameLabel.setEllipsis(true);
-        Label scoreLabel = GameText.label(assetStore.bodyFont, String.valueOf(score));
-        scoreLabel.setColor(score > 21 ? LOW_TIME_TINT : winner ? UiKit.GOLD : UiKit.INK);
-        Table header = new Table();
-        header.add(nameLabel).left().expandX().fillX().minWidth(0);
-        if (score > 21) {
-            Label bust = GameText.label(assetStore.captionFont, "BUST");
-            bust.setColor(LOW_TIME_TINT);
-            header.add(bust).right().padRight(10);
+        Label scoreLabel = GameText.label(assetStore.headingFont, String.valueOf(score));
+        scoreLabel.setColor(bust ? LOW_TIME_TINT : winner ? UiKit.GOLD : UiKit.INK);
+
+        // Name over the score on the left, the cards on the right
+        Table info = new Table();
+        info.left();
+        info.add(nameLabel).left().width(190).row();
+        info.add(scoreLabel).left().padTop(-4).row();
+        if (bust) {
+            Label bustLabel = GameText.label(assetStore.captionFont, "BUST");
+            bustLabel.setColor(LOW_TIME_TINT);
+            info.add(bustLabel).left().padTop(-4).row();
         }
-        header.add(scoreLabel).right();
 
         Table row = new Table();
+        row.left();
         for (Card card : cardsOf(cards)) {
-            row.add(new Image(assetStore.getTextureRegion(card))).size(99, 138).padRight(-30);
+            row.add(new Image(assetStore.getTextureRegion(card))).size(86, 120).padRight(-26);
         }
 
         Table hand = new Table();
         hand.setBackground(winner ? UiKit.tileMe() : UiKit.tile());
-        hand.add(header).expandX().fillX().padTop(6).padBottom(14).row();
-        hand.add(row).padRight(30).padBottom(10);
+        hand.add(info).width(190).left().padRight(20);
+        hand.add(row).expandX().left().padRight(26);
         return hand;
     }
 
@@ -846,7 +846,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         switch (action) {
             case "request_sent" -> {
                 rematchRequestId = requestId;
-                rematchSecondsLeft = message.has("expires_in") ? message.get("expires_in").getAsFloat() : 30;
+                rematchSecondsLeft = message.has("expires_in") ? message.get("expires_in").getAsFloat() : 10;
                 updateRematchStatus();
             }
             case "game_request" -> {
@@ -907,7 +907,7 @@ public class TwoPlayerGamePlayScreen implements Screen, BackHandler {
         } else if (incomingRematchId != null) {
             text = opponentName + " wants a rematch for " + stake + " points!";
         } else {
-            text = "Rematch asks " + opponentName + " to play again for " + stake + " points";
+            text = "Play " + opponentName + " again for " + stake + " points";
         }
         rematchStatusLabel.setText(text);
     }

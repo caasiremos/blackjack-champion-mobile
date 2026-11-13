@@ -78,6 +78,9 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     private Timer.Task pollingTask;
     private final TextureRegion goldTR, silverTR, bronzeTR;
     private Label balanceLabel, myNameLabel, myRankLabel;
+    // The weekly bonus for 1st to 5th place, filled in from the server's leaderboard message
+    private static final int BONUS_PLACES = 5;
+    private final Label[] bonusLabels = new Label[BONUS_PLACES];
     private Cell<Actor> myAvatarCell;
 
     private final int myStake = ChipBadge.amountOf(ChipBadge.selectedKey());
@@ -105,7 +108,10 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         // Three equal columns
         float columnWidth = (width - 2 * 44 - 2 * GAP) / 3f;
         Table players = buildPlayersPanel();
-        Table centre = buildStakeCard();
+        // The stake chip, and the weekly bonus for the top five under it
+        Table centre = new Table();
+        centre.add(buildStakeCard()).expand().fill().row();
+        centre.add(buildWeeklyBonusCard()).expandX().fillX().padTop(GAP);
         Table leaderboard = buildLeaderboardPanel();
 
         Table body = new Table();
@@ -199,11 +205,24 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         myAvatarCell = me.add((Actor) UiKit.avatar(assetStore, myName, 72, UiKit.GOLD, true, true)).size(72, 72);
         tappable(me, this::showMyProfile);
 
+        // Your points, in the middle, as on the game screen
+        balanceLabel = GameText.label(assetStore.buttonFont, pointsText());
+        balanceLabel.setColor(UiKit.GOLD);
+        Table balance = new Table();
+        balance.setBackground(UiKit.pill());
+        balance.add(balanceLabel);
+
+        Table left = new Table();
+        left.add(backIcon).size(88, 88).padRight(26);
+        left.add(titles).left();
+        Table right = new Table();
+        right.add(me).right().padRight(36);
+        right.add(share).right().height(76);
+
         Table bar = new Table();
-        bar.add(backIcon).size(88, 88).padRight(26);
-        bar.add(titles).left().expandX();
-        bar.add(me).right().padRight(36);
-        bar.add(share).right().height(76);
+        bar.add(left).left().expandX().uniformX();
+        bar.add(balance).center();
+        bar.add(right).right().expandX().uniformX();
         return bar;
     }
 
@@ -236,8 +255,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
     // ---- Your stake ----
 
     /**
-     * One focus: the stake others challenge you for, as a chip, with your points and the
-     * service points per game underneath.
+     * The stake others challenge you for, as a chip with its amount.
      */
     private Table buildStakeCard() {
         Label caption = GameText.label(assetStore.captionFont, "Y O U R   S T A K E");
@@ -245,14 +263,14 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
         // Just the coin, floating on a soft gold halo
         TextureRegion coinRegion = ChipBadge.coinRegion(assetStore, ChipBadge.selectedKey());
-        float coinWidth = 240, coinHeight = coinWidth * coinRegion.getRegionHeight() / coinRegion.getRegionWidth();
+        float coinWidth = 170, coinHeight = coinWidth * coinRegion.getRegionHeight() / coinRegion.getRegionWidth();
         Image coin = new Image(coinRegion);
         Table coinBox = new Table();
         coinBox.add(coin).size(coinWidth, coinHeight);
         coin.addAction(Actions.forever(Actions.sequence(
-            Actions.moveBy(0, 8, 1.6f, Interpolation.sine), Actions.moveBy(0, -8, 1.6f, Interpolation.sine))));
+            Actions.moveBy(0, 6, 1.6f, Interpolation.sine), Actions.moveBy(0, -6, 1.6f, Interpolation.sine))));
         Table halo = new Table();
-        halo.add(new Image(UiKit.glow("chipGlow", new Color(0.96f, 0.7f, 0.19f, 0.4f)))).size(480, 420);
+        halo.add(new Image(UiKit.glow("chipGlow", new Color(0.96f, 0.7f, 0.19f, 0.4f)))).size(380, 300);
         Stack chip = new Stack();
         chip.add(halo);
         chip.add(coinBox);
@@ -265,40 +283,59 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         stake.add(stakeValue).bottom();
         stake.add(stakeUnit).bottom().padLeft(12).padBottom(8);
 
-        Label explain = GameText.label(assetStore.captionFont, "Other players challenge you for this amount");
+        Label explain = GameText.label(assetStore.captionFont, String.format(Locale.US,
+            "Players challenge you for this  ·  %,d service points a game", ChipBadge.feeFor(myStake)));
         explain.setColor(UiKit.SOFT);
-        explain.setFontScale(1.15f);
-
-        // Two figures side by side, split by a hairline
-        balanceLabel = GameText.label(assetStore.bodyFont, pointsText());
-        balanceLabel.setColor(UiKit.INK);
-        Label service = GameText.label(assetStore.bodyFont, String.format(Locale.US, "%,d", ChipBadge.feeFor(myStake)));
-        service.setColor(UiKit.INK);
-        Table stats = new Table();
-        stats.add(figure(balanceLabel, "POINTS AVAILABLE")).expandX().uniformX();
-        stats.add(new Image(UiKit.gradient("cardRuleV", new Color(1, 1, 1, 0.12f), new Color(1, 1, 1, 0.12f)))).width(2).height(64).padLeft(16).padRight(16);
-        stats.add(figure(service, "SERVICE POINTS / GAME")).expandX().uniformX();
 
         Table card = new Table();
         card.setBackground(UiKit.heroCard());
-        card.add(caption).padTop(6).row();
+        card.add(caption).padTop(-6).row();
         card.add().expandY().row();
-        card.add(chip).height(310).row();
-        card.add(stake).padTop(-16).row();
+        card.add(chip).height(210).row();
+        card.add(stake).padTop(-14).row();
         card.add(explain).padTop(2).row();
         card.add().expandY().row();
-        card.add(new Image(UiKit.gradient("cardRule", new Color(1, 1, 1, 0.1f), new Color(1, 1, 1, 0.1f)))).expandX().fillX().height(2).padBottom(22).row();
-        card.add(stats).expandX().fillX().padBottom(4);
         return card;
     }
 
-    private Table figure(Label value, String title) {
-        Label caption = GameText.label(assetStore.captionFont, title);
-        caption.setColor(UiKit.SOFT);
-        Table figure = new Table();
-        figure.add(value).row();
-        figure.add(caption).padTop(2);
-        return figure;
+    // ---- Weekly bonus ----
+
+    /**
+     * What this week's top five on the leaderboard win: place and amount, one row each. The
+     * amounts come with the leaderboard, so the dashboard can change them.
+     */
+    private Table buildWeeklyBonusCard() {
+        Label title = heading("WEEKLY BONUS");
+        Label position = GameText.label(assetStore.captionFont, "POSITION");
+        position.setColor(UiKit.GOLD);
+        Label amount = GameText.label(assetStore.captionFont, "AMOUNT");
+        amount.setColor(UiKit.GOLD);
+
+        Table rows = new Table();
+        rows.add(position).left().expandX();
+        rows.add(amount).right().row();
+        for (int i = 0; i < BONUS_PLACES; i++) {
+            Label place = GameText.label(assetStore.bodyFont, String.valueOf(i + 1));
+            place.setColor(i == 0 ? UiKit.GOLD : UiKit.INK);
+            bonusLabels[i] = GameText.label(assetStore.bodyFont, "...");
+            bonusLabels[i].setColor(i == 0 ? UiKit.GOLD : UiKit.INK);
+            rows.add(new Image(UiKit.fadeRule("bonusRule", new Color(0.96f, 0.55f, 0.15f, 0.45f)))).colspan(2).expandX().fillX().height(2).padTop(8).padBottom(8).row();
+            rows.add(place).left().expandX();
+            rows.add(bonusLabels[i]).right().row();
+        }
+
+        Table card = new Table();
+        card.setBackground(UiKit.surface());
+        card.add(title).left().row();
+        card.add(rows).expandX().fillX().padTop(14);
+        return card;
+    }
+
+    private void updateWeeklyBonus(JsonArray amounts) {
+        for (int i = 0; i < BONUS_PLACES; i++) {
+            int amount = i < amounts.size() ? amounts.get(i).getAsInt() : 0;
+            bonusLabels[i].setText(amount > 0 ? String.format(Locale.US, "%,d", amount) : "--");
+        }
     }
 
     // ---- Leaderboard ----
@@ -357,7 +394,7 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
 
     private String pointsText() {
         WalletClient wallet = WalletClient.get();
-        return wallet.isLoaded() ? String.format(Locale.US, "%,d", wallet.getBalance()) : "--";
+        return wallet.isLoaded() ? String.format(Locale.US, "POINTS  %,d", wallet.getBalance()) : "POINTS  ...";
     }
 
     /**
@@ -450,8 +487,13 @@ public class OnlinePlayersScreen implements Screen, BackHandler {
         switch (action) {
             case "online_players" -> populatePlayersList(message.getAsJsonArray("players"));
             case "player_profile" -> showPlayerProfile(message);
-            case "leaderboard" -> populateLeaderboard(message.getAsJsonArray("players"),
-                message.has("me") && message.get("me").isJsonObject() ? message.getAsJsonObject("me") : null);
+            case "leaderboard" -> {
+                populateLeaderboard(message.getAsJsonArray("players"),
+                    message.has("me") && message.get("me").isJsonObject() ? message.getAsJsonObject("me") : null);
+                if (message.has("weekly_bonus") && message.get("weekly_bonus").isJsonArray()) {
+                    updateWeeklyBonus(message.getAsJsonArray("weekly_bonus"));
+                }
+            }
             case "game_request" -> {
                 closePairDialog(); // someone challenged us while we were typing an ID
                 pendingRequestId = message.get("request_id").getAsString();
